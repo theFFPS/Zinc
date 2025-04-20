@@ -56,6 +56,11 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Run Conan Install
+      working-directory: ${{ github.workspace }}
+      run: |
+        conan profile detect && conan install . --output-folder=${{ steps.strings.outputs.build-output-dir }} --build=missing
+
     - name: Cache Conan dependencies
       uses: actions/cache@v3
       with:
@@ -63,12 +68,7 @@ jobs:
         key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
         restore-keys: |
           ${{ runner.os }}-conan-
-
-    - name: Run Conan Install
-      working-directory: ${{ github.workspace }}
-      run: |
-        conan profile detect && conan install . --output-folder=${{ steps.strings.outputs.build-output-dir }} --build=missing
-
+            
     - name: Configure CMake
       run: >
         cmake --preset conan-release
