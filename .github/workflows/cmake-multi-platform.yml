@@ -64,10 +64,10 @@ jobs:
     - name: Cache Conan dependencies
       uses: actions/cache@v4
       with:
-        path: ~/.conan
+        path: ${{ github.workspace }}/.conan*
         key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
-        #restore-keys: |
-        #  ${{ runner.os }}-conan-
+        restore-keys: |
+         ${{ runner.os }}-conan-
 
     - name: Configure CMake
       run: >
