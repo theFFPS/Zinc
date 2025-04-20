@@ -68,7 +68,12 @@ bool ChunkDataBlockEntity::operator!=(ChunkDataBlockEntity& b) {
     return !operator==(b);
 }
 bool ChunkData::operator==(ChunkData& b) {
-    return m_heightMaps == b.m_heightMaps && m_data == b.m_data && m_blockEntities == b.m_blockEntities;
+    bool checkEntities = (b.m_blockEntities.size() == m_blockEntities.size());
+    if (checkEntities) for (size_t i = 0; i < m_blockEntities.size(); i++) {
+        checkEntities = (m_blockEntities[i] == b.m_blockEntities[i]);
+        if (!checkEntities) break;
+    }
+    return m_heightMaps == b.m_heightMaps && m_data == b.m_data && checkEntities;
 }
 bool ChunkData::operator!=(ChunkData& b) {
     return !operator==(b);
