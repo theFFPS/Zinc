@@ -56,6 +56,14 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Cache Conan dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.conan
+        key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
+        restore-keys: |
+          ${{ runner.os }}-conan-
+
     - name: Run Conan Install
       working-directory: ${{ github.workspace }}
       run: |
