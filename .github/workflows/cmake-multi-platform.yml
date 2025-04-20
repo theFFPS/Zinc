@@ -52,6 +52,8 @@ jobs:
 
     - name: Cache Conan dependencies
       uses: actions/cache@v4
+      env:
+        cache-name: cache-conan-modules
       with:
         path: ${{ github.workspace }}/.conan*
         key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
