@@ -55,16 +55,10 @@ jobs:
       env:
         cache-name: cache-conan-modules
       with:
-        path: ~/.conan*
+        path: ~/.conan2
         key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
         restore-keys: |
          ${{ runner.os }}-conan-
-
-    - name: List
-      id: list
-      shell: bash
-      run: |
-        ls -la ~
 
     - name: Set reusable strings
       id: strings
