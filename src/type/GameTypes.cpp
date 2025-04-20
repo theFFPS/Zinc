@@ -61,4 +61,25 @@ int TeleportFlags::toInt() {
     return m_rawBitmap;
 }
 
+bool ChunkDataBlockEntity::operator==(ChunkDataBlockEntity& b) {
+    return m_x == b.m_x && m_z == b.m_z && m_y == b.m_y && m_type == b.m_type && m_data == b.m_data;
+}
+bool ChunkDataBlockEntity::operator!=(ChunkDataBlockEntity& b) {
+    return !operator==(b);
+}
+bool ChunkData::operator==(ChunkData& b) {
+    return m_heightMaps == b.m_heightMaps && m_data == b.m_data && m_blockEntities == b.m_blockEntities;
+}
+bool ChunkData::operator!=(ChunkData& b) {
+    return !operator==(b);
+}
+
+bool LightData::operator==(LightData const& b) {
+    return m_skyLightArrays == b.m_skyLightArrays && m_blockLightArrays == b.m_blockLightArrays && m_blockLightMask == b.m_blockLightMask &&
+           m_blockLightMaskEmpty == b.m_blockLightMaskEmpty && m_skyLightMask == b.m_skyLightMask && m_skyLightMaskEmpty == b.m_skyLightMaskEmpty;
+}
+bool LightData::operator!=(LightData const& b) {
+    return !operator==(b);
+}
+
 }

@@ -29,4 +29,12 @@ std::vector<int64_t> BitSet::toLongArray() const {
     return longArray;
 }
 
+bool BitSet::operator==(BitSet const& b) {
+    return toLongArray() == b.toLongArray();
+}
+
+bool BitSet::operator!=(BitSet const& b) {
+    return !operator==(b);
+}
+
 } // namespace zinc

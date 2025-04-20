@@ -12,6 +12,7 @@
 #include "RegistryReferences.h"
 #include "BitSet.h"
 #include "GameTypes.h"
+#include "NBT.h"
 
 namespace zinc {
 
@@ -200,51 +201,22 @@ public:
     void writeTeleportFlags(TeleportFlags flags);
     TeleportFlags readTeleportFlags();
 
-    enum class NetworkNBTTagType : char {
-        End,
-        Byte, Short, Int, Long, Float, Double,
-        ByteArray, String, List, Compound, IntArray, LongArray
-    };
-    struct NetworkNBTTag {
-        NetworkNBTTagType m_type = NetworkNBTTagType::End;
-        char m_byteValue;
-        short m_shortValue;
-        int m_intValue;
-        long m_longValue;
-        float m_floatValue;
-        double m_doubleValue;
-        std::vector<char> m_byteArrayValue;
-        std::string m_stringValue;
-        std::vector<NetworkNBTTag> m_childrenTagsValue;
-        std::vector<int> m_intArrayValue;
-        std::vector<long> m_longArrayValue;
-        std::string m_tagName;
+    void writeNBT(NBTTag nbt, int protocol);
+    NBTTag readNBT(int protocol);
 
-        NetworkNBTTag();
-        NetworkNBTTag(ByteBuffer *buffer, NetworkNBTTagType expectedType = NetworkNBTTagType::Compound, bool expectTagName = true, 
-                      bool isTypeKnown = false, bool isInList = false);
+    void writeTextComponent(std::string text);
+    void writeTextComponent(NBTTag text);
+    std::string readSimpleTextComponent();
+    NBTTag readTextComponent();
 
-        std::vector<char> encode(bool ignoreNametag = false, bool isInList = false);
+    void writeAngle(float value);
+    float readAngle();
 
-        bool operator==(NetworkNBTTag& b);
-        bool operator!=(NetworkNBTTag& b);
+    void writeLightData(LightData value);
+    LightData readLightData();
 
-        static NetworkNBTTag End();
-        static NetworkNBTTag Byte(char value, std::string const& tagName);
-        static NetworkNBTTag Short(short value, std::string const& tagName);
-        static NetworkNBTTag Int(int value, std::string const& tagName);
-        static NetworkNBTTag Long(long value, std::string const& tagName);
-        static NetworkNBTTag Float(float value, std::string const& tagName);
-        static NetworkNBTTag Double(double value, std::string const& tagName);
-        static NetworkNBTTag ByteArray(std::vector<char> const& value, std::string const& tagName);
-        static NetworkNBTTag String(std::string const& value, std::string const& tagName);
-        static NetworkNBTTag IntArray(std::vector<int> const& value, std::string const& tagName);
-        static NetworkNBTTag LongArray(std::vector<long> const& value, std::string const& tagName);
-        static NetworkNBTTag List(std::vector<NetworkNBTTag> const& value, std::string const& tagName);
-        static NetworkNBTTag Compound(std::vector<NetworkNBTTag> const& value, std::string const& tagName);
-    };
-    void writeNBT(NetworkNBTTag nbt, int protocol);
-    NetworkNBTTag readNBT(int protocol);
+    void writeChunkData(ChunkData value);
+    ChunkData readChunkData();
 };
 
 }

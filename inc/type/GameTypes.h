@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <vector>
+#include "BitSet.h"
+#include "NBT.h"
 
 namespace zinc {
 
@@ -40,6 +43,36 @@ struct TeleportFlags {
 
     void update();
     int toInt();
+};
+
+struct ChunkDataBlockEntity {
+    char m_x, m_z;
+    short m_y;
+    int m_type;
+    NBTTag m_data;
+
+    bool operator==(ChunkDataBlockEntity& b);
+    bool operator!=(ChunkDataBlockEntity& b);
+};
+struct ChunkData {
+    NBTTag m_heightMaps;
+    std::vector<char> m_data;
+    std::vector<ChunkDataBlockEntity> m_blockEntities;
+
+    bool operator==(ChunkData& b);
+    bool operator!=(ChunkData& b);
+};
+
+struct LightData {
+    BitSet m_skyLightMask;
+    BitSet m_blockLightMask;
+    BitSet m_skyLightMaskEmpty;
+    BitSet m_blockLightMaskEmpty;
+    std::vector<std::vector<char>> m_skyLightArrays;   // char[2048]*
+    std::vector<std::vector<char>> m_blockLightArrays; // char[2048]*
+
+    bool operator==(LightData const& b);
+    bool operator!=(LightData const& b);
 };
 
 }

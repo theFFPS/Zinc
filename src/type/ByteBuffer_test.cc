@@ -10,6 +10,13 @@ TEST(ByteBufferTest, WriteReadByte) {
     char result = buffer.readByte();
     EXPECT_EQ(value, result);
 }
+TEST(ByteBufferTest, WriteReadAngle) {
+    ByteBuffer buffer;
+    float value = (15/256);
+    buffer.writeAngle(value);
+    float result = buffer.readAngle();
+    EXPECT_EQ(value, result);
+}
 TEST(ByteBufferTest, WriteReadUnsignedByte) {
     ByteBuffer buffer;
     unsigned char value = 255;
@@ -136,30 +143,61 @@ TEST(ByteBufferTest, WriteReadTeleportFlags) {
     TeleportFlags result = buffer.readTeleportFlags();
     EXPECT_TRUE(value == result);
 }
+TEST(ByteBufferTest, WriteReadSimpleText) {
+    ByteBuffer buffer;
+    std::string value = "Hello World!";
+    buffer.writeTextComponent(value);
+    std::string result = buffer.readSimpleTextComponent();
+    EXPECT_EQ(value, result);
+}
+TEST(ByteBufferTest, WriteReadText) {
+    ByteBuffer buffer;
+    NBTTag value = NBTTag::Compound({
+        NBTTag::String("Hello World!", "text"),
+        NBTTag::String("red", "color"),
+        NBTTag::Byte(1, "bold")
+    }, "");
+    buffer.writeTextComponent(value);
+    NBTTag result = buffer.readTextComponent();
+    EXPECT_TRUE(value == result);
+}
+TEST(ByteBufferTest, WriteReadLightData) {
+    ByteBuffer buffer;
+    LightData value;
+    value.m_blockLightMask.set(125);
+    buffer.writeLightData(value);
+    LightData result = buffer.readLightData();
+    EXPECT_TRUE(value == result);
+}
+TEST(ByteBufferTest, WriteReadChunkData) {
+    ByteBuffer buffer;
+    ChunkData value;
+    value.m_data = {1};
+    buffer.writeChunkData(value);
+    ChunkData result = buffer.readChunkData();
+    EXPECT_TRUE(value == result);
+}
 TEST(ByteBufferTest, WriteReadNBT) {
     ByteBuffer buffer;
-    ByteBuffer::NetworkNBTTag value = ByteBuffer::NetworkNBTTag::Compound({
-        ByteBuffer::NetworkNBTTag::Byte(12, "byte"),
-        ByteBuffer::NetworkNBTTag::Short(12, "short"),
-        ByteBuffer::NetworkNBTTag::Int(12, "int"),
-        ByteBuffer::NetworkNBTTag::Long(12, "long"),
-        ByteBuffer::NetworkNBTTag::Float(0.4f, "float"),
-        ByteBuffer::NetworkNBTTag::Double(1.3, "double"),
-        ByteBuffer::NetworkNBTTag::ByteArray({12,14,13}, "byte_array"),
-        ByteBuffer::NetworkNBTTag::String("Hello World!", "string"),
-        ByteBuffer::NetworkNBTTag::IntArray({1,1,1,1}, "int_array"),
-        ByteBuffer::NetworkNBTTag::LongArray({1,1,1,1}, "long_array"),
-        ByteBuffer::NetworkNBTTag::List({
-            ByteBuffer::NetworkNBTTag::IntArray({1,1,1,1}, ""),
-            ByteBuffer::NetworkNBTTag::IntArray({2,2,2,2}, ""),
-            ByteBuffer::NetworkNBTTag::IntArray({3,3,3,3}, "")
+    NBTTag value = NBTTag::Compound({
+        NBTTag::Byte(12, "byte"),
+        NBTTag::Short(12, "short"),
+        NBTTag::Int(12, "int"),
+        NBTTag::Long(12, "long"),
+        NBTTag::Float(0.4f, "float"),
+        NBTTag::Double(1.3, "double"),
+        NBTTag::ByteArray({12,14,13}, "byte_array"),
+        NBTTag::String("Hello World!", "string"),
+        NBTTag::IntArray({1,1,1,1}, "int_array"),
+        NBTTag::LongArray({1,1,1,1}, "long_array"),
+        NBTTag::List({
+            NBTTag::IntArray({1,1,1,1}, ""),
+            NBTTag::IntArray({2,2,2,2}, ""),
+            NBTTag::IntArray({3,3,3,3}, "")
         }, "list")
     }, "");
     buffer.writeNBT(value, 765);
-    ByteBuffer::NetworkNBTTag result = buffer.readNBT(765);
-    std::vector<char> arr2 = result.encode(true);
-    for (char c : arr2) std::cout << (int)c << " ";
-    std::cout << "\n";
+    NBTTag result = buffer.readNBT(765);
     EXPECT_TRUE(value == result);
 }
 TEST(ByteBufferTest, WriteReadIDSet) {
