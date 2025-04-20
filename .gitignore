@@ -1,6 +1,2 @@
-*
-
-!src/
-!inc/
-!CMakeLists.txt
-!.gitignore
+.vscode
+build
