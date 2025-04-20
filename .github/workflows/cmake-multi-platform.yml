@@ -60,6 +60,12 @@ jobs:
         restore-keys: |
          ${{ runner.os }}-conan-
 
+    - name: List
+      id: list
+      shell: bash
+      run: |
+        ls -la ${{ github.workspace }}
+
     - name: Set reusable strings
       id: strings
       shell: bash
