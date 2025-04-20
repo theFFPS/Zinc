@@ -2,7 +2,11 @@
 openssl/3.3.1
 libcurl/8.8.0
 gtest/1.14.0
+libevent/2.1.12
 
 [generators]
 CMakeToolchain
 CMakeDeps
+
+[layout]
+cmake_layout
