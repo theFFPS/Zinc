@@ -1,1 +1,5 @@
 build
+conanbuild.sh
+conanrun.sh
+CMakeUserPresets.json
+.build/
