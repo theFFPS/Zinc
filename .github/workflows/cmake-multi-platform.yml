@@ -62,13 +62,13 @@ jobs:
         conan profile detect && conan install . --output-folder=${{ steps.strings.outputs.build-output-dir }} --build=missing
 
     - name: Cache Conan dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.conan
         key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
-        restore-keys: |
-          ${{ runner.os }}-conan-
-            
+        #restore-keys: |
+        #  ${{ runner.os }}-conan-
+
     - name: Configure CMake
       run: >
         cmake --preset conan-release
