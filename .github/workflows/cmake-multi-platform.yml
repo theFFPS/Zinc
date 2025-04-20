@@ -50,6 +50,14 @@ jobs:
     - name: Install Conan
       run: pip install conan
 
+    - name: Cache Conan dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/.conan*
+        key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
+        restore-keys: |
+         ${{ runner.os }}-conan-
+
     - name: Set reusable strings
       id: strings
       shell: bash
@@ -60,14 +68,6 @@ jobs:
       working-directory: ${{ github.workspace }}
       run: |
         conan profile detect && conan install . --output-folder=${{ steps.strings.outputs.build-output-dir }} --build=missing
-
-    - name: Cache Conan dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ github.workspace }}/.conan*
-        key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
-        restore-keys: |
-         ${{ runner.os }}-conan-
 
     - name: Configure CMake
       run: >
