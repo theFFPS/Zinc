@@ -10,7 +10,6 @@ TEST(ByteBufferTest, WriteReadByte) {
     char result = buffer.readByte();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadUnsignedByte) {
     ByteBuffer buffer;
     unsigned char value = 255;
@@ -18,7 +17,6 @@ TEST(ByteBufferTest, WriteReadUnsignedByte) {
     unsigned char result = buffer.readUnsignedByte();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadShort) {
     ByteBuffer buffer;
     short value = 32767;
@@ -26,7 +24,6 @@ TEST(ByteBufferTest, WriteReadShort) {
     short result = buffer.readShort();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadUnsignedShort) {
     ByteBuffer buffer;
     unsigned short value = 65535;
@@ -34,7 +31,6 @@ TEST(ByteBufferTest, WriteReadUnsignedShort) {
     unsigned short result = buffer.readUnsignedShort();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadInt) {
     ByteBuffer buffer;
     int value = 2147483647;
@@ -42,7 +38,6 @@ TEST(ByteBufferTest, WriteReadInt) {
     int result = buffer.readInt();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadUnsignedInt) {
     ByteBuffer buffer;
     unsigned int value = 4294967295;
@@ -50,7 +45,6 @@ TEST(ByteBufferTest, WriteReadUnsignedInt) {
     unsigned int result = buffer.readUnsignedInt();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadLong) {
     ByteBuffer buffer;
     long value = 9223372036854775807L;
@@ -58,7 +52,6 @@ TEST(ByteBufferTest, WriteReadLong) {
     long result = buffer.readLong();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadUnsignedLong) {
     ByteBuffer buffer;
     unsigned long value = 18446744073709551615UL;
@@ -66,7 +59,6 @@ TEST(ByteBufferTest, WriteReadUnsignedLong) {
     unsigned long result = buffer.readUnsignedLong();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadFloat) {
     ByteBuffer buffer;
     float value = 3.14159f;
@@ -74,7 +66,6 @@ TEST(ByteBufferTest, WriteReadFloat) {
     float result = buffer.readFloat();
     EXPECT_FLOAT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadDouble) {
     ByteBuffer buffer;
     double value = 3.141592653589793;
@@ -82,7 +73,6 @@ TEST(ByteBufferTest, WriteReadDouble) {
     double result = buffer.readDouble();
     EXPECT_DOUBLE_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadVarInt) {
     ByteBuffer buffer;
     int value = 2147483647;
@@ -90,7 +80,6 @@ TEST(ByteBufferTest, WriteReadVarInt) {
     int result = buffer.readVarInt();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadVarLong) {
     ByteBuffer buffer;
     long value = 9223372036854775807L;
@@ -98,7 +87,6 @@ TEST(ByteBufferTest, WriteReadVarLong) {
     long result = buffer.readVarLong();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadString) {
     ByteBuffer buffer;
     std::string value = "Hello, World!";
@@ -106,7 +94,6 @@ TEST(ByteBufferTest, WriteReadString) {
     std::string result = buffer.readString();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadJSON) {
     ByteBuffer buffer;
     nlohmann::json value = {{"key", "value"}};
@@ -114,7 +101,6 @@ TEST(ByteBufferTest, WriteReadJSON) {
     nlohmann::json result = buffer.readJSON();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadPosition) {
     ByteBuffer buffer;
     std::vector<int> value = {1, 2, 3};
@@ -122,7 +108,6 @@ TEST(ByteBufferTest, WriteReadPosition) {
     std::vector<int> result = buffer.readPosition();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadArray) {
     ByteBuffer buffer;
     std::vector<int> value = {1, 2, 3, 4, 5};
@@ -130,7 +115,60 @@ TEST(ByteBufferTest, WriteReadArray) {
     std::vector<int> result = buffer.readArray(value.size(), &ByteBuffer::readInt);
     EXPECT_EQ(value, result);
 }
-
+TEST(ByteBufferTest, WriteReadIDorX) {
+    ByteBuffer buffer;
+    IDorX<int> value (std::optional<int>(123));
+    buffer.writeIDorX(value, &ByteBuffer::writeVarInt);
+    IDorX<int> result = buffer.readIDorX(&ByteBuffer::readVarInt);
+    EXPECT_TRUE(value == result);
+}
+TEST(ByteBufferTest, WriteReadSoundEvent) {
+    ByteBuffer buffer;
+    SoundEvent value ("test", 0.5);
+    buffer.writeSoundEvent(value);
+    SoundEvent result = buffer.readSoundEvent();
+    EXPECT_TRUE(value == result);
+}
+TEST(ByteBufferTest, WriteReadTeleportFlags) {
+    ByteBuffer buffer;
+    TeleportFlags value (2561);
+    buffer.writeTeleportFlags(value);
+    TeleportFlags result = buffer.readTeleportFlags();
+    EXPECT_TRUE(value == result);
+}
+TEST(ByteBufferTest, WriteReadNBT) {
+    ByteBuffer buffer;
+    ByteBuffer::NetworkNBTTag value = ByteBuffer::NetworkNBTTag::Compound({
+        ByteBuffer::NetworkNBTTag::Byte(12, "byte"),
+        ByteBuffer::NetworkNBTTag::Short(12, "short"),
+        ByteBuffer::NetworkNBTTag::Int(12, "int"),
+        ByteBuffer::NetworkNBTTag::Long(12, "long"),
+        ByteBuffer::NetworkNBTTag::Float(0.4f, "float"),
+        ByteBuffer::NetworkNBTTag::Double(1.3, "double"),
+        ByteBuffer::NetworkNBTTag::ByteArray({12,14,13}, "byte_array"),
+        ByteBuffer::NetworkNBTTag::String("Hello World!", "string"),
+        ByteBuffer::NetworkNBTTag::IntArray({1,1,1,1}, "int_array"),
+        ByteBuffer::NetworkNBTTag::LongArray({1,1,1,1}, "long_array"),
+        ByteBuffer::NetworkNBTTag::List({
+            ByteBuffer::NetworkNBTTag::IntArray({1,1,1,1}, ""),
+            ByteBuffer::NetworkNBTTag::IntArray({2,2,2,2}, ""),
+            ByteBuffer::NetworkNBTTag::IntArray({3,3,3,3}, "")
+        }, "list")
+    }, "");
+    buffer.writeNBT(value, 765);
+    ByteBuffer::NetworkNBTTag result = buffer.readNBT(765);
+    std::vector<char> arr2 = result.encode(true);
+    for (char c : arr2) std::cout << (int)c << " ";
+    std::cout << "\n";
+    EXPECT_TRUE(value == result);
+}
+TEST(ByteBufferTest, WriteReadIDSet) {
+    ByteBuffer buffer;
+    IDSet value (2, "test", { 1 });
+    buffer.writeIDSet(value);
+    IDSet result = buffer.readIDSet();
+    EXPECT_TRUE(value == result);
+}
 TEST(ByteBufferTest, WriteReadPrefixedArray) {
     ByteBuffer buffer;
     std::vector<int> value = {1, 2, 3, 4, 5};
@@ -138,7 +176,6 @@ TEST(ByteBufferTest, WriteReadPrefixedArray) {
     std::vector<int> result = buffer.readPrefixedArray(&ByteBuffer::readInt);
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadUUID) {
     ByteBuffer buffer;
     uuids::uuid value = uuids::uuid::from_string("123e4567-e89b-12d3-a456-426655440000").value();
@@ -146,7 +183,6 @@ TEST(ByteBufferTest, WriteReadUUID) {
     uuids::uuid result = buffer.readUUID();
     EXPECT_EQ(value, result);
 }
-
 TEST(ByteBufferTest, WriteReadBitSet) {
     ByteBuffer buffer;
     BitSet value(std::vector<long>{1, 2, 3});
@@ -168,7 +204,6 @@ TEST(ByteBufferTest, WriteReadFixedBitSet) {
     BitSet result = buffer.readFixedBitSet(24);
     EXPECT_EQ(result.toLongArray(), value.toLongArray());
 }
-
 TEST(ByteBufferTest, WriteReadOptional) {
     ByteBuffer buffer;
     std::optional<int> value = 123;
@@ -178,7 +213,6 @@ TEST(ByteBufferTest, WriteReadOptional) {
     EXPECT_TRUE(result.has_value());
     EXPECT_EQ(result.value(), value.value());
 }
-
 TEST(ByteBufferTest, WriteReadPrefixedOptional) {
     ByteBuffer buffer;
     std::optional<int> value = 123;

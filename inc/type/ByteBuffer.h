@@ -4,10 +4,14 @@
 #include <string>
 #include <cstring>
 #include <stdexcept>
+#include <optional>
+
 #include <external/JSON.h>
 #include <external/UUID.h>
-#include <optional>
+
+#include "RegistryReferences.h"
 #include "BitSet.h"
+#include "GameTypes.h"
 
 namespace zinc {
 
@@ -22,6 +26,8 @@ private:
 public:
     ByteBuffer();
     ByteBuffer(const std::vector<char>& bytes, unsigned long readPtr = 0);
+
+    std::vector<char> getBytes();
 
     template<typename T> void writeNumeric(T value) {
         char tmp[sizeof(T)];
@@ -165,6 +171,80 @@ public:
 
     void writeFixedBitSet(BitSet bitset);
     BitSet readFixedBitSet(size_t sizeInBytes);
+
+    template<typename T> void writeIDorX(IDorX<T> value, void(ByteBuffer::*writeFunc)(T)) {
+        writeVarInt(value.m_id);
+        if (value.m_id == 0) (this->*writeFunc)(value.m_value.value());
+    }
+    template<typename T> void writeIDorX(IDorX<T> value, void(*writeFunc)(T)) {
+        writeVarInt(value.m_id);
+        if (value.m_id == 0) writeFunc(value.m_value.value());
+    }
+    template<typename T> IDorX<T> readIDorX(T(ByteBuffer::*readFunc)()) {
+        int id = readVarInt();
+        if (id != 0) return IDorX<T>(id);
+        return IDorX<T>(std::optional<T>((this->*readFunc)()));
+    }
+    template<typename T> IDorX<T> readIDorX(T(*readFunc)()) {
+        int id = readVarInt();
+        if (id != 0) return IDorX<T>(id);
+        return IDorX<T>(std::optional<T>(readFunc()));
+    }
+
+    void writeIDSet(IDSet value);
+    IDSet readIDSet();
+
+    void writeSoundEvent(SoundEvent value);
+    SoundEvent readSoundEvent();
+
+    void writeTeleportFlags(TeleportFlags flags);
+    TeleportFlags readTeleportFlags();
+
+    enum class NetworkNBTTagType : char {
+        End,
+        Byte, Short, Int, Long, Float, Double,
+        ByteArray, String, List, Compound, IntArray, LongArray
+    };
+    struct NetworkNBTTag {
+        NetworkNBTTagType m_type = NetworkNBTTagType::End;
+        char m_byteValue;
+        short m_shortValue;
+        int m_intValue;
+        long m_longValue;
+        float m_floatValue;
+        double m_doubleValue;
+        std::vector<char> m_byteArrayValue;
+        std::string m_stringValue;
+        std::vector<NetworkNBTTag> m_childrenTagsValue;
+        std::vector<int> m_intArrayValue;
+        std::vector<long> m_longArrayValue;
+        std::string m_tagName;
+
+        NetworkNBTTag();
+        NetworkNBTTag(ByteBuffer *buffer, NetworkNBTTagType expectedType = NetworkNBTTagType::Compound, bool expectTagName = true, 
+                      bool isTypeKnown = false, bool isInList = false);
+
+        std::vector<char> encode(bool ignoreNametag = false, bool isInList = false);
+
+        bool operator==(NetworkNBTTag& b);
+        bool operator!=(NetworkNBTTag& b);
+
+        static NetworkNBTTag End();
+        static NetworkNBTTag Byte(char value, std::string const& tagName);
+        static NetworkNBTTag Short(short value, std::string const& tagName);
+        static NetworkNBTTag Int(int value, std::string const& tagName);
+        static NetworkNBTTag Long(long value, std::string const& tagName);
+        static NetworkNBTTag Float(float value, std::string const& tagName);
+        static NetworkNBTTag Double(double value, std::string const& tagName);
+        static NetworkNBTTag ByteArray(std::vector<char> const& value, std::string const& tagName);
+        static NetworkNBTTag String(std::string const& value, std::string const& tagName);
+        static NetworkNBTTag IntArray(std::vector<int> const& value, std::string const& tagName);
+        static NetworkNBTTag LongArray(std::vector<long> const& value, std::string const& tagName);
+        static NetworkNBTTag List(std::vector<NetworkNBTTag> const& value, std::string const& tagName);
+        static NetworkNBTTag Compound(std::vector<NetworkNBTTag> const& value, std::string const& tagName);
+    };
+    void writeNBT(NetworkNBTTag nbt, int protocol);
+    NetworkNBTTag readNBT(int protocol);
 };
 
 }
