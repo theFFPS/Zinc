@@ -7,6 +7,3 @@ libevent/2.1.12
 [generators]
 CMakeToolchain
 CMakeDeps
-
-[layout]
-cmake_layout
