@@ -59,7 +59,7 @@ jobs:
     - name: Run Conan Install
       working-directory: ${{ github.workspace }}
       run: |
-        conan install . --output-folder=${{ steps.strings.outputs.build-output-dir }} --build=missing
+        conan profile detect && conan install . --output-folder=${{ steps.strings.outputs.build-output-dir }} --build=missing
 
     - name: Configure CMake
       run: >
