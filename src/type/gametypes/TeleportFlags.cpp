@@ -1,22 +1,7 @@
-#include <type/GameTypes.h>
+#include <type/gametypes/TeleportFlags.h>
 
 namespace zinc {
 
-SoundEvent::SoundEvent() {}
-SoundEvent::SoundEvent(std::string const& soundName) : m_soundName(soundName), m_hasFixedRange(false) {}
-SoundEvent::SoundEvent(std::string const& soundName, float fixedRange) : m_soundName(soundName), m_hasFixedRange(true), m_fixedRange(fixedRange) {}
-bool SoundEvent::operator==(SoundEvent const& b) {
-    return b.m_fixedRange == m_fixedRange && m_hasFixedRange == b.m_hasFixedRange && m_soundName == b.m_soundName;
-}
-bool SoundEvent::operator!=(SoundEvent const& b) {
-    return !operator==(b);
-}
-
-bool m_relX, m_relY, m_relZ;
-bool m_relYaw, m_relPitch;
-bool m_relVelocityX, m_relVelocityY, m_relVelocityZ;
-bool m_rotVelocity;
-int m_rawBitmap;
 TeleportFlags::TeleportFlags() 
     : m_relX(false), m_relY(false), m_relZ(false), 
       m_relYaw(false), m_relPitch(false),
@@ -59,32 +44,6 @@ void TeleportFlags::update() {
 int TeleportFlags::toInt() {
     update();
     return m_rawBitmap;
-}
-
-bool ChunkDataBlockEntity::operator==(ChunkDataBlockEntity& b) {
-    return m_x == b.m_x && m_z == b.m_z && m_y == b.m_y && m_type == b.m_type && m_data == b.m_data;
-}
-bool ChunkDataBlockEntity::operator!=(ChunkDataBlockEntity& b) {
-    return !operator==(b);
-}
-bool ChunkData::operator==(ChunkData& b) {
-    bool checkEntities = (b.m_blockEntities.size() == m_blockEntities.size());
-    if (checkEntities) for (size_t i = 0; i < m_blockEntities.size(); i++) {
-        checkEntities = (m_blockEntities[i] == b.m_blockEntities[i]);
-        if (!checkEntities) break;
-    }
-    return m_heightMaps == b.m_heightMaps && m_data == b.m_data && checkEntities;
-}
-bool ChunkData::operator!=(ChunkData& b) {
-    return !operator==(b);
-}
-
-bool LightData::operator==(LightData const& b) {
-    return m_skyLightArrays == b.m_skyLightArrays && m_blockLightArrays == b.m_blockLightArrays && m_blockLightMask == b.m_blockLightMask &&
-           m_blockLightMaskEmpty == b.m_blockLightMaskEmpty && m_skyLightMask == b.m_skyLightMask && m_skyLightMaskEmpty == b.m_skyLightMaskEmpty;
-}
-bool LightData::operator!=(LightData const& b) {
-    return !operator==(b);
 }
 
 }

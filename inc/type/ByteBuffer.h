@@ -9,10 +9,12 @@
 #include <external/JSON.h>
 #include <external/UUID.h>
 
-#include "RegistryReferences.h"
+#include "gametypes/LightData.h"
+#include "gametypes/SoundEvent.h"
+#include "gametypes/TeleportFlags.h"
+#include "registry/IDorX.h"
+#include "registry/IDSet.h"
 #include "BitSet.h"
-#include "GameTypes.h"
-#include "NBT.h"
 
 namespace zinc {
 
@@ -201,22 +203,11 @@ public:
     void writeTeleportFlags(TeleportFlags flags);
     TeleportFlags readTeleportFlags();
 
-    void writeNBT(NBTTag nbt, int protocol);
-    NBTTag readNBT(int protocol);
-
-    void writeTextComponent(std::string text);
-    void writeTextComponent(NBTTag text);
-    std::string readSimpleTextComponent();
-    NBTTag readTextComponent();
-
     void writeAngle(float value);
     float readAngle();
 
     void writeLightData(LightData value);
     LightData readLightData();
-
-    void writeChunkData(ChunkData value);
-    ChunkData readChunkData();
 };
 
 }

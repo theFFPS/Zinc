@@ -1,4 +1,0 @@
-Entity Metadata 	Varies 	Miscellaneous information about an entity 	See Minecraft Wiki:Projects/wiki.vg merge/Entity metadata#Entity Metadata Format
-Slot 	Varies 	An item stack in an inventory or container 	See Slot Data
-Recipe Display 	Varies 	See Recipes#Recipe Display structure 	Description of a recipe for use for use by the client.
-Slot Display 	Varies 	See Recipes#Slot Display structure 	Description of a recipe ingredient slot for use for use by the client.

@@ -228,26 +228,6 @@ TeleportFlags ByteBuffer::readTeleportFlags() {
     return TeleportFlags(readInt());
 }
 
-void ByteBuffer::writeNBT(NBTTag nbt, int protocol) {
-    writeByteArray(nbt.encode(protocol >= 764));
-}
-NBTTag ByteBuffer::readNBT(int protocol) {
-    return NBTTag(this, NBTTagType::Compound, protocol < 764);
-}
-
-void ByteBuffer::writeTextComponent(std::string text) {
-    writeByteArray(NBTTag::String(text, "").encode(true));
-}
-void ByteBuffer::writeTextComponent(NBTTag text) {
-    writeByteArray(text.encode(true));
-}
-std::string ByteBuffer::readSimpleTextComponent() {
-    return NBTTag(this, NBTTagType::String, false).m_stringValue;
-}
-NBTTag ByteBuffer::readTextComponent() {
-    return NBTTag(this, NBTTagType::Compound, false);
-}
-
 void ByteBuffer::writeAngle(float value) {
     writeUnsignedByte((unsigned char) (value * 256));
 }
@@ -271,35 +251,6 @@ LightData ByteBuffer::readLightData() {
     result.m_blockLightMaskEmpty = readBitSet();
     result.m_skyLightArrays = readPrefixedArray<std::vector<char>>(&ByteBuffer::readPrefixedByteArray);
     result.m_blockLightArrays = readPrefixedArray<std::vector<char>>(&ByteBuffer::readPrefixedByteArray);
-    return result;
-}
-
-void ByteBuffer::writeChunkData(ChunkData value) {
-    writeNBT(value.m_heightMaps, 765);
-    writePrefixedByteArray(value.m_data);
-    writeVarInt(value.m_blockEntities.size());
-    for (ChunkDataBlockEntity& blockEntity : value.m_blockEntities) {
-        writeUnsignedByte(((blockEntity.m_x & 15) << 4) | (blockEntity.m_z & 15));
-        writeShort(blockEntity.m_y);
-        writeVarInt(blockEntity.m_type);
-        writeNBT(blockEntity.m_data, 765);
-    }
-}
-ChunkData ByteBuffer::readChunkData() {
-    ChunkData result;
-    result.m_heightMaps = readNBT(765);
-    result.m_data = readPrefixedByteArray();
-    int size = readVarInt();
-    for (int i = 0; i < size; i++) {
-        ChunkDataBlockEntity blockEntity;
-        unsigned char packedXZ = readUnsignedByte();
-        blockEntity.m_x = packedXZ >> 4;
-        blockEntity.m_z = packedXZ & 15;
-        blockEntity.m_y = readShort();
-        blockEntity.m_type = readVarInt();
-        blockEntity.m_data = readNBT(765);
-        result.m_blockEntities.push_back(blockEntity);
-    }
     return result;
 }
 

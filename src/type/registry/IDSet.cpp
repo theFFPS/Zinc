@@ -1,4 +1,4 @@
-#include <type/RegistryReferences.h>
+#include <type/registry/IDSet.h>
 
 namespace zinc {
 
