@@ -3,6 +3,7 @@ openssl/3.3.1
 libcurl/8.8.0
 gtest/1.14.0
 libevent/2.1.12
+zlib-ng/2.2.4
 
 [generators]
 CMakeToolchain
