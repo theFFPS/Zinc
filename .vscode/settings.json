@@ -89,6 +89,8 @@
         "typeindex": "cpp",
         "*.ipp": "cpp",
         "fstream": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "semaphore": "cpp",
+        "shared_mutex": "cpp"
     }
 }
