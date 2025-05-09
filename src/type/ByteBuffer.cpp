@@ -320,4 +320,52 @@ SoundEvent ByteBuffer::readSoundEvent() {
     return result;
 }
 
+void ByteBuffer::writeBitSet(const BitSet& bitSet) {
+    writePrefixedArray<unsigned long>(bitSet.toLongArray(), &ByteBuffer::writeNumeric<unsigned long>);
+}
+BitSet ByteBuffer::readBitSet() {
+    return BitSet::fromLongArray(readPrefixedArray<unsigned long>(&ByteBuffer::readNumeric<unsigned long>));
+}
+void ByteBuffer::writeFixedBitSet(const BitSet& bitSet) {
+    writeArray<unsigned char>(bitSet.toByteArray(), &ByteBuffer::writeNumeric<unsigned char>);
+}
+BitSet ByteBuffer::readFixedBitSet(const size_t& length) {
+    return BitSet::fromByteArray(readArray<unsigned char>(&ByteBuffer::readNumeric<unsigned char>, length));
+}
+
+void ByteBuffer::writeTeleportFlags(const TeleportFlags& teleportFlags) {
+    writeNumeric<int>(teleportFlags.encode());
+}
+TeleportFlags ByteBuffer::readTeleportFlags() {
+    return TeleportFlags(readNumeric<int>());
+}
+
+void ByteBuffer::writeNBTElement(const NBTElement& nbtElement, const int& protocol) {
+    NBTSettings settings;
+    settings.setIsInArray(false);
+    settings.setIsNetwork(true);
+    settings.setProtocol(protocol);
+    settings.setType(NBTElementType::End);
+    writeNBTElement(nbtElement, settings);
+}
+void ByteBuffer::writeNBTElement(const NBTElement& nbtElement, const NBTSettings& settings) {
+    NBTElement element = nbtElement;
+    element.setSettings(settings);
+    element.encode(*this);
+}
+NBTElement ByteBuffer::readNBTElement(const int& protocol) {
+    NBTSettings settings;
+    settings.setIsInArray(false);
+    settings.setIsNetwork(true);
+    settings.setProtocol(protocol);
+    settings.setType(NBTElementType::End);
+    return readNBTElement(settings);
+}
+NBTElement ByteBuffer::readNBTElement(const NBTSettings& settings) {
+    NBTElement element;
+    element.setSettings(settings);
+    element.decode(*this);
+    return element;
+}
+
 }

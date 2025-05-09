@@ -91,6 +91,13 @@
         "fstream": "cpp",
         "__config": "cpp",
         "semaphore": "cpp",
-        "shared_mutex": "cpp"
+        "shared_mutex": "cpp",
+        "source_location": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "future": "cpp",
+        "stdfloat": "cpp",
+        "stop_token": "cpp",
+        "cfenv": "cpp"
     }
 }

@@ -15,6 +15,9 @@
 #include "TextComponent.h"
 #include "PlayerLocation.h"
 #include "SoundEvent.h"
+#include "BitSet.h"
+#include "TeleportFlags.h"
+#include "nbt/NBTElement.h"
 
 namespace zinc {
 
@@ -205,7 +208,34 @@ public:
     void writeSoundEvent(const SoundEvent& soundEvent);
     SoundEvent readSoundEvent();
 
-    // implement NBT
+    void writeBitSet(const BitSet& bitSet);
+    BitSet readBitSet();
+    void writeFixedBitSet(const BitSet& bitSet);
+    BitSet readFixedBitSet(const size_t& length);
+
+    template<typename T> void writeEnumSet(const std::vector<T>& enumSet) {
+        BitSet bitSet;
+        for (const T& value : enumSet) {
+            bitSet.set((unsigned long) value);
+        }
+        writeFixedBitSet(bitSet);
+    }
+    template<typename T> std::vector<T> readEnumSet(const size_t& length) {
+        BitSet bitSet = readFixedBitSet(length);
+        std::vector<T> result;
+        for (size_t i = 0; i < (length * 8); i++) {
+            if (bitSet.get(i)) result.push_back((T) i);
+        }
+        return result;
+    }
+
+    void writeTeleportFlags(const TeleportFlags& teleportFlags);
+    TeleportFlags readTeleportFlags();
+
+    void writeNBTElement(const NBTElement& nbtElement, const int& protocol);
+    void writeNBTElement(const NBTElement& nbtElement, const NBTSettings& settings);
+    NBTElement readNBTElement(const int& protocol);
+    NBTElement readNBTElement(const NBTSettings& settings);
 };
 
 }

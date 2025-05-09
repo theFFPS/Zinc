@@ -6,14 +6,14 @@ namespace zinc {
 
 struct BitSet {
 private:
-    std::vector<unsigned long> data;
-    unsigned long highest_set;
-    static const unsigned long npos = static_cast<unsigned long>(-1);
+    std::vector<unsigned long> m_data;
+    unsigned long m_highestSet;
+    static const unsigned long NPOS = static_cast<unsigned long>(-1);
 
     unsigned long findHighestSet() const;
 public:
-    BitSet() : highest_set(npos) {}
-    explicit BitSet(unsigned long n) : data((n + 63) / 64, 0), highest_set(npos) {}
+    BitSet() : m_highestSet(NPOS) {}
+    explicit BitSet(unsigned long n) : m_data((n + 63) / 64, 0), m_highestSet(NPOS) {}
 
     void set(unsigned long pos);
     void clear(unsigned long pos);
