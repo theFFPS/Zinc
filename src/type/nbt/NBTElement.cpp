@@ -1,4 +1,5 @@
 #include <type/nbt/NBTElement.h>
+#include <type/ByteBuffer.h>
 #include <util/Logger.h>
 
 namespace zinc {

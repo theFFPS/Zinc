@@ -63,7 +63,7 @@ public:
         writeBytes(bytes);
     }
     template<typename T> T readNumeric() {
-        T result{};
+        T result;
         std::vector<char> bytes = readBytes(sizeof(T));
         if (m_isBigEndian) std::reverse(bytes.begin(), bytes.end());
         std::copy(bytes.begin(), bytes.end(), (char*)&result);
@@ -111,11 +111,11 @@ public:
         if (value.has_value()) func(value.value(), *this);
     }
     template<typename T> void writePrefixedOptional(const std::optional<T>& value, void(ByteBuffer::*func)(const T&)) {
-        writeNumeric<bool>(value.has_value());
+        writeByte(value.has_value());
         if (value.has_value()) (this->*func)(value.value());
     }
     template<typename T> void writePrefixedOptional(const std::optional<T>& value, void(*func)(const T&, ByteBuffer&)) {
-        writeNumeric<bool>(value.has_value());
+        writewriteByte(value.has_value());
         if (value.has_value()) func(value.value(), *this);
     }
     template<typename T> std::optional<T> readOptional(T(ByteBuffer::*func)(), bool hasValue) {
@@ -129,10 +129,10 @@ public:
         return result;
     }
     template<typename T> std::optional<T> readPrefixedOptional(T(ByteBuffer::*func)()) {
-        return readOptional<T>(func, readNumeric<bool>());
+        return readOptional<T>(func, readByte());
     }
     template<typename T> std::optional<T> readPrefixedOptional(T(func)(ByteBuffer&)) {
-        return readOptional<T>(func, readNumeric<bool>());
+        return readOptional<T>(func, readByte());
     }
 
     template<typename T> void writeArray(const std::vector<T>& value, void(ByteBuffer::*func)(const T&)) {

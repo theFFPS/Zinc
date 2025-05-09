@@ -1,11 +1,14 @@
 #pragma once
 
 #include <map>
-#include "../ByteBuffer.h"
+#include <vector>
+#include <string>
 #include "NBTSettings.h"
 #include "NBTElementType.h"
 
 namespace zinc {
+
+struct ByteBuffer;
 
 struct NBTElement {
 private:
@@ -26,23 +29,14 @@ private:
     std::vector<int> m_intArrayValue;
     std::vector<long> m_longArrayValue;
 public:
-    NBTElement() : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(NBTSettings()) {}
-    NBTElement(const std::vector<char>& bytes) 
-        : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(NBTSettings()) {
-        ByteBuffer buffer (bytes);
-        decode(buffer);
-    }
+    NBTElement() 
+        : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(NBTSettings()) {}
     NBTElement(ByteBuffer& byteBuffer) 
         : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(NBTSettings()) {
         decode(byteBuffer);
     }
     NBTElement(const NBTSettings& settings) 
         : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(settings) {}
-    NBTElement(const std::vector<char>& bytes, const NBTSettings& settings) 
-        : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(settings) {
-        ByteBuffer buffer (bytes);
-        decode(buffer);
-    }
     NBTElement(ByteBuffer& byteBuffer, const NBTSettings& settings) 
         : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(settings) {
         decode(byteBuffer);

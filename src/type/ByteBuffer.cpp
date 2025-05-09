@@ -311,12 +311,12 @@ PlayerLocation ByteBuffer::readPlayerLocation() {
 
 void ByteBuffer::writeSoundEvent(const SoundEvent& soundEvent) {
     writeIdentifier(soundEvent.getIdentifier());
-    writeNumeric<bool>(soundEvent.hasFixedRange());
+    writeByte(soundEvent.hasFixedRange());
     writeNumeric<float>(soundEvent.getFixedRange());
 }
 SoundEvent ByteBuffer::readSoundEvent() {
     SoundEvent result (readIdentifier());
-    if (readNumeric<bool>()) result.setFixedRange(readNumeric<float>());
+    if (readByte()) result.setFixedRange(readNumeric<float>());
     return result;
 }
 
@@ -327,10 +327,10 @@ BitSet ByteBuffer::readBitSet() {
     return BitSet::fromLongArray(readPrefixedArray<unsigned long>(&ByteBuffer::readNumeric<unsigned long>));
 }
 void ByteBuffer::writeFixedBitSet(const BitSet& bitSet) {
-    writeArray<unsigned char>(bitSet.toByteArray(), &ByteBuffer::writeNumeric<unsigned char>);
+    writeArray<unsigned char>(bitSet.toByteArray(), &ByteBuffer::writeUnsignedByte);
 }
 BitSet ByteBuffer::readFixedBitSet(const size_t& length) {
-    return BitSet::fromByteArray(readArray<unsigned char>(&ByteBuffer::readNumeric<unsigned char>, length));
+    return BitSet::fromByteArray(readArray<unsigned char>(&ByteBuffer::readUnsignedByte, length));
 }
 
 void ByteBuffer::writeTeleportFlags(const TeleportFlags& teleportFlags) {

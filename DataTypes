@@ -9,7 +9,6 @@ JSON Text Component 	≥ 1
 EntityMetadata 	Varies 	Miscellaneous information about an entity 	See Minecraft Wiki:Projects/wiki.vg merge/Entity metadata#Entity Metadata Format
 Slot 	Varies 	An item stack in an inventory or container 	See Slot Data
 HashedSlot 	Varies 	Similar to Slot, but with the data component values being sent as a hash instead of their actual contents 	See Slot Data#Hashed Format
-NBT 	Varies 	Depends on context 	See NBT
 ChatType 	Varies 	See #Chat Type below 	Parameters for a direct chat type.
 TeleportFlags 	4 	See #Teleport Flags below 	Bit field specifying how a teleportation is to be applied on each axis.
 RecipeDisplay 	Varies 	See Recipes#Recipe Display structure 	Description of a recipe for use for use by the client.
