@@ -100,7 +100,7 @@ endif()
 #     endif()
 # endif()
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(zinc PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(zinc PRIVATE -Wall -Wextra -Wpedantic -O5)
 endif()
 
 enable_testing()
