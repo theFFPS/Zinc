@@ -94,6 +94,58 @@ public:
 
     bool operator==(const NBTElement& element) const;
     bool operator!=(const NBTElement& element) const;
+
+    static NBTElement Byte(const char& byte);
+    static NBTElement Short(const short& shortValue);
+    static NBTElement Int(const int& intValue);
+    static NBTElement Long(const long& longValue);
+    static NBTElement Float(const float& floatValue);
+    static NBTElement Double(const double& doubleValue);
+    static NBTElement ByteArray(const std::vector<char>& byteArray);
+    static NBTElement String(const std::string& string);
+    static NBTElement IntArray(const std::vector<int>& intArray);
+    static NBTElement LongArray(const std::vector<long>& longArray);
+    static NBTElement List(const std::vector<NBTElement>& children);
+    static NBTElement Compound(const std::vector<NBTElement>& children);
+
+    static NBTElement Byte(const std::string& tag, const char& byte);
+    static NBTElement Short(const std::string& tag, const short& shortValue);
+    static NBTElement Int(const std::string& tag, const int& intValue);
+    static NBTElement Long(const std::string& tag, const long& longValue);
+    static NBTElement Float(const std::string& tag, const float& floatValue);
+    static NBTElement Double(const std::string& tag, const double& doubleValue);
+    static NBTElement ByteArray(const std::string& tag, const std::vector<char>& byteArray);
+    static NBTElement String(const std::string& tag, const std::string& string);
+    static NBTElement IntArray(const std::string& tag, const std::vector<int>& intArray);
+    static NBTElement LongArray(const std::string& tag, const std::vector<long>& longArray);
+    static NBTElement List(const std::string& tag, const std::vector<NBTElement>& children);
+    static NBTElement Compound(const std::string& tag, const std::vector<NBTElement>& children);
+
+    static NBTElement Byte(const char& byte, const NBTSettings& settings);
+    static NBTElement Short(const short& shortValue, const NBTSettings& settings);
+    static NBTElement Int(const int& intValue, const NBTSettings& settings);
+    static NBTElement Long(const long& longValue, const NBTSettings& settings);
+    static NBTElement Float(const float& floatValue, const NBTSettings& settings);
+    static NBTElement Double(const double& doubleValue, const NBTSettings& settings);
+    static NBTElement ByteArray(const std::vector<char>& byteArray, const NBTSettings& settings);
+    static NBTElement String(const std::string& string, const NBTSettings& settings);
+    static NBTElement IntArray(const std::vector<int>& intArray, const NBTSettings& settings);
+    static NBTElement LongArray(const std::vector<long>& longArray, const NBTSettings& settings);
+    static NBTElement List(const std::vector<NBTElement>& children, const NBTSettings& settings);
+    static NBTElement Compound(const std::vector<NBTElement>& children, const NBTSettings& settings);
+
+    static NBTElement Byte(const std::string& tag, const char& byte, const NBTSettings& settings);
+    static NBTElement Short(const std::string& tag, const short& shortValue, const NBTSettings& settings);
+    static NBTElement Int(const std::string& tag, const int& intValue, const NBTSettings& settings);
+    static NBTElement Long(const std::string& tag, const long& longValue, const NBTSettings& settings);
+    static NBTElement Float(const std::string& tag, const float& floatValue, const NBTSettings& settings);
+    static NBTElement Double(const std::string& tag, const double& doubleValue, const NBTSettings& settings);
+    static NBTElement ByteArray(const std::string& tag, const std::vector<char>& byteArray, const NBTSettings& settings);
+    static NBTElement String(const std::string& tag, const std::string& string, const NBTSettings& settings);
+    static NBTElement IntArray(const std::string& tag, const std::vector<int>& intArray, const NBTSettings& settings);
+    static NBTElement LongArray(const std::string& tag, const std::vector<long>& longArray, const NBTSettings& settings);
+    static NBTElement List(const std::string& tag, const std::vector<NBTElement>& children, const NBTSettings& settings);
+    static NBTElement Compound(const std::string& tag, const std::vector<NBTElement>& children, const NBTSettings& settings);
 };
 
 }

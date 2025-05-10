@@ -1,6 +1,7 @@
 #include <type/nbt/NBTElement.h>
 #include <type/ByteBuffer.h>
 #include <util/Logger.h>
+#include <iostream>
 
 namespace zinc {
 
@@ -437,7 +438,6 @@ void NBTElement::setLongArray(const std::vector<long>& longArrayValue) {
 }
 bool NBTElement::operator==(const NBTElement& element) const {
     if (element.getType() != m_type) return false;
-    if (element.getSettings() != m_settings) return false;
     switch (m_type) {
     case NBTElementType::Byte: return m_byteValue == element.getByte();
     case NBTElementType::Short: return m_shortValue == element.getShort();
@@ -447,7 +447,7 @@ bool NBTElement::operator==(const NBTElement& element) const {
     case NBTElementType::Double: return m_doubleValue == element.getDouble();
     case NBTElementType::ByteArray: return m_byteArrayValue == element.getByteArray();
     case NBTElementType::String: return m_stringValue == element.getString();
-    case NBTElementType::List:
+    case NBTElementType::List: return m_childElements == element.getChildElements();
     case NBTElementType::Compound: return m_childElements == element.getChildElements();
     case NBTElementType::IntArray: return m_intArrayValue == element.getIntArray();
     case NBTElementType::LongArray: return m_longArrayValue == element.getLongArray();
@@ -456,6 +456,266 @@ bool NBTElement::operator==(const NBTElement& element) const {
 }
 bool NBTElement::operator!=(const NBTElement& element) const {
     return !operator==(element);
+}
+
+NBTElement NBTElement::Byte(const char& byte) {
+    NBTElement element;
+    element.setByte(byte);
+    return element;
+}
+NBTElement NBTElement::Short(const short& shortValue) {
+    NBTElement element;
+    element.setShort(shortValue);
+    return element;
+}
+NBTElement NBTElement::Int(const int& intValue) {
+    NBTElement element;
+    element.setInt(intValue);
+    return element;
+}
+NBTElement NBTElement::Long(const long& longValue) {
+    NBTElement element;
+    element.setLong(longValue);
+    return element;
+}
+NBTElement NBTElement::Float(const float& floatValue) {
+    NBTElement element;
+    element.setFloat(floatValue);
+    return element;
+}
+NBTElement NBTElement::Double(const double& doubleValue) {
+    NBTElement element;
+    element.setDouble(doubleValue);
+    return element;
+}
+NBTElement NBTElement::ByteArray(const std::vector<char>& byteArray) {
+    NBTElement element;
+    element.setByteArray(byteArray);
+    return element;
+}
+NBTElement NBTElement::String(const std::string& string) {
+    NBTElement element;
+    element.setString(string);
+    return element;
+}
+NBTElement NBTElement::IntArray(const std::vector<int>& intArray) {
+    NBTElement element;
+    element.setIntArray(intArray);
+    return element;
+}
+NBTElement NBTElement::LongArray(const std::vector<long>& longArray) {
+    NBTElement element;
+    element.setLongArray(longArray);
+    return element;
+}
+NBTElement NBTElement::List(const std::vector<NBTElement>& children) {
+    NBTElement element;
+    element.setType(NBTElementType::List);
+    element.setChildElements(children);
+    return element;
+}
+NBTElement NBTElement::Compound(const std::vector<NBTElement>& children) {
+    NBTElement element;
+    element.setType(NBTElementType::Compound);
+    element.setChildElements(children);
+    return element;
+}
+
+NBTElement NBTElement::Byte(const std::string& tag, const char& byte) {
+    NBTElement element = NBTElement::Byte(byte);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Short(const std::string& tag, const short& shortValue) {
+    NBTElement element = NBTElement::Short(shortValue);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Int(const std::string& tag, const int& intValue) {
+    NBTElement element = NBTElement::Int(intValue);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Long(const std::string& tag, const long& longValue) {
+    NBTElement element = NBTElement::Long(longValue);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Float(const std::string& tag, const float& floatValue) {
+    NBTElement element = NBTElement::Float(floatValue);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Double(const std::string& tag, const double& doubleValue) {
+    NBTElement element = NBTElement::Double(doubleValue);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::ByteArray(const std::string& tag, const std::vector<char>& byteArray) {
+    NBTElement element = NBTElement::ByteArray(byteArray);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::String(const std::string& tag, const std::string& string) {
+    NBTElement element = NBTElement::String(string);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::IntArray(const std::string& tag, const std::vector<int>& intArray) {
+    NBTElement element = NBTElement::IntArray(intArray);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::LongArray(const std::string& tag, const std::vector<long>& longArray) {
+    NBTElement element = NBTElement::LongArray(longArray);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::List(const std::string& tag, const std::vector<NBTElement>& children) {
+    NBTElement element = NBTElement::List(children);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Compound(const std::string& tag, const std::vector<NBTElement>& children) {
+    NBTElement element = NBTElement::Compound(children);
+    element.setTag(tag);
+    return element;
+}
+
+NBTElement NBTElement::Byte(const char& byte, const NBTSettings& settings) {
+    NBTElement element;
+    element.setByte(byte);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::Short(const short& shortValue, const NBTSettings& settings) {
+    NBTElement element;
+    element.setShort(shortValue);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::Int(const int& intValue, const NBTSettings& settings) {
+    NBTElement element;
+    element.setInt(intValue);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::Long(const long& longValue, const NBTSettings& settings) {
+    NBTElement element;
+    element.setLong(longValue);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::Float(const float& floatValue, const NBTSettings& settings) {
+    NBTElement element;
+    element.setFloat(floatValue);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::Double(const double& doubleValue, const NBTSettings& settings) {
+    NBTElement element;
+    element.setDouble(doubleValue);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::ByteArray(const std::vector<char>& byteArray, const NBTSettings& settings) {
+    NBTElement element;
+    element.setByteArray(byteArray);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::String(const std::string& string, const NBTSettings& settings) {
+    NBTElement element;
+    element.setString(string);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::IntArray(const std::vector<int>& intArray, const NBTSettings& settings) {
+    NBTElement element;
+    element.setIntArray(intArray);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::LongArray(const std::vector<long>& longArray, const NBTSettings& settings) {
+    NBTElement element;
+    element.setLongArray(longArray);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::List(const std::vector<NBTElement>& children, const NBTSettings& settings) {
+    NBTElement element;
+    element.setType(NBTElementType::List);
+    element.setChildElements(children);
+    element.setSettings(settings);
+    return element;
+}
+NBTElement NBTElement::Compound(const std::vector<NBTElement>& children, const NBTSettings& settings) {
+    NBTElement element;
+    element.setType(NBTElementType::Compound);
+    element.setChildElements(children);
+    element.setSettings(settings);
+    return element;
+}
+
+NBTElement NBTElement::Byte(const std::string& tag, const char& byte, const NBTSettings& settings) {
+    NBTElement element = NBTElement::Byte(byte, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Short(const std::string& tag, const short& shortValue, const NBTSettings& settings) {
+    NBTElement element = NBTElement::Short(shortValue, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Int(const std::string& tag, const int& intValue, const NBTSettings& settings) {
+    NBTElement element = NBTElement::Int(intValue, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Long(const std::string& tag, const long& longValue, const NBTSettings& settings) {
+    NBTElement element = NBTElement::Long(longValue, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Float(const std::string& tag, const float& floatValue, const NBTSettings& settings) {
+    NBTElement element = NBTElement::Float(floatValue, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Double(const std::string& tag, const double& doubleValue, const NBTSettings& settings) {
+    NBTElement element = NBTElement::Double(doubleValue, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::ByteArray(const std::string& tag, const std::vector<char>& byteArray, const NBTSettings& settings) {
+    NBTElement element = NBTElement::ByteArray(byteArray, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::String(const std::string& tag, const std::string& string, const NBTSettings& settings) {
+    NBTElement element = NBTElement::String(string, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::IntArray(const std::string& tag, const std::vector<int>& intArray, const NBTSettings& settings) {
+    NBTElement element = NBTElement::IntArray(intArray, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::LongArray(const std::string& tag, const std::vector<long>& longArray, const NBTSettings& settings) {
+    NBTElement element = NBTElement::LongArray(longArray, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::List(const std::string& tag, const std::vector<NBTElement>& children, const NBTSettings& settings) {
+    NBTElement element = NBTElement::List(children, settings);
+    element.setTag(tag);
+    return element;
+}
+NBTElement NBTElement::Compound(const std::string& tag, const std::vector<NBTElement>& children, const NBTSettings& settings) {
+    NBTElement element = NBTElement::Compound(children, settings);
+    element.setTag(tag);
+    return element;
 }
 
 }

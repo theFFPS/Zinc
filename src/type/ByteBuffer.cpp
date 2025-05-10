@@ -226,7 +226,10 @@ void ByteBuffer::writePosition(const Vector3i& value) {
 }
 Vector3i ByteBuffer::readPosition() {
     long longVal = readNumeric<long>();
-    return Vector3i(longVal >> 38, (longVal << 52) >> 52, (longVal << 26) >> 38);
+    int x = int(longVal >> 38);
+    int z = int((longVal >> 12) & 0x3FFFFFF);
+    int y = int(longVal & 0xFFF);
+    return Vector3i(x, y, z);
 }
 
 void ByteBuffer::writeAngle(const float& angle) {

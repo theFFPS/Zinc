@@ -41,6 +41,19 @@ endif()
 add_library(zinc_static STATIC ${SOURCES})
 add_executable(zinc src/main.cc)
 target_link_libraries(zinc PRIVATE zinc_static)
+
+add_executable(test_NBT test/test_NBT.cpp)
+target_link_libraries(test_NBT PRIVATE zinc_static GTest::gtest)
+
+add_executable(test_ByteBuffer test/test_ByteBuffer.cpp)
+target_link_libraries(test_ByteBuffer PRIVATE zinc_static GTest::gtest)
+
+add_executable(test_Base64 test/test_Base64.cpp)
+target_link_libraries(test_Base64 PRIVATE zinc_static GTest::gtest)
+
+add_executable(test_RSA test/test_RSA.cpp)
+target_link_libraries(test_RSA PRIVATE zinc_static GTest::gtest)
+
 if(TARGET libevent::libevent)
     if(TARGET zlib-ng::zlib-ng)
         target_link_libraries(zinc_static PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto libevent::libevent zlib-ng::zlib-ng)
