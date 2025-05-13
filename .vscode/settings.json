@@ -98,6 +98,8 @@
         "future": "cpp",
         "stdfloat": "cpp",
         "stop_token": "cpp",
-        "cfenv": "cpp"
+        "cfenv": "cpp",
+        "__string": "cpp",
+        "coroutine": "cpp"
     }
 }

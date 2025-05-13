@@ -56,6 +56,9 @@ public:
     bool getRotVelocity() const;
 
     int encode() const;
+
+    bool operator==(const TeleportFlags& flags) const;
+    bool operator!=(const TeleportFlags& flags) const;
 };
 
 }

@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "Vector.h"
+#include "Identifier.h"
 #include <external/UUID.h>
 
 namespace zinc {
@@ -33,16 +34,14 @@ extern const std::string LEGACY_FORMAT_RESET;
 
 struct TextComponent {
 public:
-    enum class Type {
-        Text, Translatable, Score, Selector, Keybind, NBT, Undefined
-    };
+    enum class Type { Text, Translatable, Score, Selector, Keybind, NBT, Undefined };
     struct Content {
 
     };
     struct Format {
     private:
         std::string m_color;
-        std::string m_font;
+        Identifier m_font;
         bool m_isBold;
         bool m_isItalic;
         bool m_isUnderlined;
@@ -56,6 +55,7 @@ public:
         
         void setColor(const std::string& color);
         void setFont(const std::string& font);
+        void setFont(const Identifier& font);
         void setBold(const bool& isBold);
         void setItalic(const bool& isItalic);
         void setUnderlined(const bool& isUnderlined);
@@ -67,8 +67,8 @@ public:
 
         std::string& getColor();
         std::string getColor() const;
-        std::string& getFont();
-        std::string getFont() const;
+        Identifier& getFont();
+        Identifier getFont() const;
         bool& isBold();
         bool isBold() const;
         bool& isItalic();
@@ -81,28 +81,58 @@ public:
         bool isObfuscated() const;
         int& getShadowColor();
         int getShadowColor() const;
+
+        bool operator==(const Format& format) const;
+        bool operator!=(const Format& format) const;
     };
     struct Interactivity {
     public:
         struct ClickEvent {
         public:
-            enum class Action {
-                OpenURL, OpenFile, RunCommand, SuggestCommand, ChangePage, CopyToClipboard, Undefined
-            };
+            enum class Action { OpenURL, OpenFile, RunCommand, SuggestCommand, ChangePage, CopyToClipboard, Undefined };
         private:
-            Action m_action = Action::Undefined;
+            Action m_action;
             std::string m_url; // OpenURL
             std::string m_path; // OpenFile
             std::string m_command; // RunCommand & SuggestCommand
             int m_page; // ChangePage
             std::string m_value; // CopyToClipboard
         public:
+            ClickEvent() : m_action(Action::Undefined), m_page(0) {}
+            
+            void setAction(const Action& action);
+            void setURL(const std::string& url);
+            void setPath(const std::string& path);
+            void setCommand(const std::string& command);
+            void setPage(const int& page);
+            void setCopyValue(const std::string& value);
+
+            Action& getAction();
+            Action getAction() const;
+            std::string& getURL();
+            std::string getURL() const;
+            std::string& getPath();
+            std::string getPath() const;
+            std::string& getCommand();
+            std::string getCommand() const;
+            int& getPage();
+            int getPage() const;
+            std::string& getCopyValue();
+            std::string getCopyValue() const;
+
+            bool operator==(const ClickEvent& event) const;
+            bool operator!=(const ClickEvent& event) const;
+
+            static ClickEvent OpenURL(const std::string& url);
+            static ClickEvent OpenFile(const std::string& path);
+            static ClickEvent RunCommand(const std::string& command);
+            static ClickEvent SuggestCommand(const std::string& command);
+            static ClickEvent ChangePage(const int& page);
+            static ClickEvent CopyToClipboard(const std::string& value);
         };
         struct HoverEvent {
         public:
-            enum class Action {
-                ShowText, ShowItem, ShowEntity, Undefined
-            };
+            enum class Action { ShowText, ShowItem, ShowEntity, Undefined };
         private:
             Action m_action = Action::Undefined;
             std::vector<TextComponent> m_value; // ShowText & ShowEntity

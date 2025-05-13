@@ -38,6 +38,7 @@ public:
     ByteBuffer(const bool& isBigEndian) : m_bytes({}), m_readPtr(0), m_isBigEndian(isBigEndian) {}
     ByteBuffer(const std::vector<char>& bytes, const size_t& readPtr = 0) : m_bytes(bytes), m_readPtr(readPtr), m_isBigEndian(true) {}
     ByteBuffer(const std::vector<char>& bytes, const size_t& readPtr, const bool& isBigEndian) : m_bytes(bytes), m_readPtr(readPtr), m_isBigEndian(isBigEndian) {}
+    ByteBuffer(ByteBuffer&& buffer) : m_bytes(buffer.getBytes()), m_readPtr(buffer.getReadPointer()), m_isBigEndian(buffer.getIsBigEndian()) {}
 
     std::vector<char>& getBytes();
     std::vector<char> getBytes() const;
@@ -179,13 +180,13 @@ public:
         writeVarInt(value.getId());
         if (!value.getId()) (this->*func)(value.getValue());
     }
-    template<typename T> IDorX<T> readIDorX(IDorX<T>(func)(ByteBuffer&)) {
+    template<typename T> IDorX<T> readIDorX(T(func)(ByteBuffer&)) {
         IDorX<T> result;
         result.setId(readVarInt());
         if (!result.getId()) result.setValue(func(*this));
         return result;
     }
-    template<typename T> IDorX<T> readIDorX(IDorX<T>(ByteBuffer::*func)()) {
+    template<typename T> IDorX<T> readIDorX(T(ByteBuffer::*func)()) {
         IDorX<T> result;
         result.setId(readVarInt());
         if (!result.getId()) result.setValue((this->*func)());
@@ -232,10 +233,11 @@ public:
     void writeTeleportFlags(const TeleportFlags& teleportFlags);
     TeleportFlags readTeleportFlags();
 
-    void writeNBTElement(const NBTElement& nbtElement, const int& protocol);
-    void writeNBTElement(const NBTElement& nbtElement, const NBTSettings& settings);
-    NBTElement readNBTElement(const int& protocol);
-    NBTElement readNBTElement(const NBTSettings& settings);
+    void writeNBTElement(const NBTElement& nbtElement);
+    NBTElement readNBTElement();
+
+    bool operator==(const ByteBuffer& buffer) const;
+    bool operator!=(const ByteBuffer& buffer) const;
 };
 
 }

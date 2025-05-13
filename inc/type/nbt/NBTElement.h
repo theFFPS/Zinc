@@ -30,15 +30,19 @@ private:
     std::vector<long> m_longArrayValue;
 public:
     NBTElement() 
-        : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(NBTSettings()) {}
+        : m_settings(NBTSettings()), m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), 
+            m_floatValue(0), m_doubleValue(0) {}
     NBTElement(ByteBuffer& byteBuffer) 
-        : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(NBTSettings()) {
+        : m_settings(NBTSettings()), m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), 
+            m_floatValue(0), m_doubleValue(0) {
         decode(byteBuffer);
     }
     NBTElement(const NBTSettings& settings) 
-        : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(settings) {}
+        : m_settings(settings), m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), 
+            m_floatValue(0), m_doubleValue(0) {}
     NBTElement(ByteBuffer& byteBuffer, const NBTSettings& settings) 
-        : m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), m_floatValue(0), m_doubleValue(0), m_settings(settings) {
+        : m_settings(settings), m_type(NBTElementType::End), m_byteValue(0), m_shortValue(0), m_intValue(0), m_longValue(0), 
+            m_floatValue(0), m_doubleValue(0) {
         decode(byteBuffer);
     }
 

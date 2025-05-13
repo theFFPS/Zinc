@@ -15,22 +15,15 @@ void NBTElement::encode(ByteBuffer& byteBuffer) const {
     if (m_settings.getType() != NBTElementType::End) type = m_settings.getType();
     if (!m_settings.getIsInArray()) byteBuffer.writeByte((char) type);
     if (type != NBTElementType::End && !m_settings.getIsInArray()) {
-        if (type == NBTElementType::Compound) {
-            if (!(m_tag.empty() && m_settings.getIsNetwork() && m_settings.getProtocol() >= 764)) {
-                if (byteBuffer.getIsBigEndian()) {
-                    byteBuffer.writeNumeric<unsigned short>(m_tag.size());
-                    byteBuffer.writeBytes(std::vector<char>(m_tag.begin(), m_tag.end()));
-                } else byteBuffer.writeString(m_tag);
-            }
-        } else {
-            if (byteBuffer.getIsBigEndian()) {
+        if (!byteBuffer.getIsBigEndian()) {
+            if (!m_settings.getIsNetwork()) {
                 byteBuffer.writeNumeric<unsigned short>(m_tag.size());
                 byteBuffer.writeBytes(std::vector<char>(m_tag.begin(), m_tag.end()));
-            } else {
-                if (!m_settings.getIsNetwork()) {
-                    byteBuffer.writeNumeric<unsigned short>(m_tag.size());
-                    byteBuffer.writeBytes(std::vector<char>(m_tag.begin(), m_tag.end()));
-                } else byteBuffer.writeString(m_tag);
+            } else byteBuffer.writeString(m_tag);
+        } else {
+            if (!(m_tag.empty() && m_settings.getIsNetwork() && type == NBTElementType::Compound)) {
+                byteBuffer.writeNumeric<unsigned short>(m_tag.size());
+                byteBuffer.writeBytes(std::vector<char>(m_tag.begin(), m_tag.end()));
             }
         }
     }
@@ -112,7 +105,7 @@ void NBTElement::encode(ByteBuffer& byteBuffer) const {
                     if (m_settings.getIsNetwork()) byteBuffer.writeZigZagVarInt(0);
                     else byteBuffer.writeNumeric<unsigned int>(0);
                 }
-                break;
+                return;
             }
             NBTSettings settings = m_settings;
             settings.setType(elementType);
@@ -144,12 +137,8 @@ void NBTElement::encode(ByteBuffer& byteBuffer) const {
         break;
     }
     case NBTElementType::Compound: {
-        NBTSettings settings = m_settings;
-        settings.setIsInArray(false);
-        settings.setType(NBTElementType::End);
         for (const NBTElement& element : m_childElements) {
             NBTElement childElement = element;
-            childElement.setSettings(settings);
             childElement.encode(byteBuffer);
         }
         byteBuffer.writeByte(0);
@@ -162,22 +151,15 @@ void NBTElement::decode(ByteBuffer& byteBuffer) {
     if (m_settings.getType() != NBTElementType::End) m_type = m_settings.getType();
     if (!m_settings.getIsInArray()) m_type = (NBTElementType) byteBuffer.readByte();
     if (m_type != NBTElementType::End && !m_settings.getIsInArray()) {
-        if (m_type == NBTElementType::Compound) {
-            if (!(m_tag.empty() && m_settings.getIsNetwork() && m_settings.getProtocol() >= 764)) {
-                if (byteBuffer.getIsBigEndian()) {
-                    std::vector<char> bytes = byteBuffer.readBytes(byteBuffer.readNumeric<unsigned short>());
-                    m_tag = std::string(bytes.begin(), bytes.end());
-                } else m_tag = byteBuffer.readString();
-            }
-        } else {
-            if (byteBuffer.getIsBigEndian()) {
+        if (!byteBuffer.getIsBigEndian()) {
+            if (!m_settings.getIsNetwork()) {
                 std::vector<char> bytes = byteBuffer.readBytes(byteBuffer.readNumeric<unsigned short>());
                 m_tag = std::string(bytes.begin(), bytes.end());
-            } else {
-                if (!m_settings.getIsNetwork()) {
-                    std::vector<char> bytes = byteBuffer.readBytes(byteBuffer.readNumeric<unsigned short>());
-                    m_tag = std::string(bytes.begin(), bytes.end());
-                } else m_tag = byteBuffer.readString();
+            } else m_tag = byteBuffer.readString();
+        } else {
+            if (!(m_settings.getIsNetwork() && m_type == NBTElementType::Compound)) {
+                std::vector<char> bytes = byteBuffer.readBytes(byteBuffer.readNumeric<unsigned short>());
+                m_tag = std::string(bytes.begin(), bytes.end());
             }
         }
     }
@@ -271,6 +253,7 @@ void NBTElement::decode(ByteBuffer& byteBuffer) {
         if (type == NBTElementType::End) length = 0;
         settings.setType(type);
         settings.setIsInArray(true);
+        settings.setIsNetwork(!byteBuffer.getIsBigEndian() && settings.getIsNetwork());
         for (unsigned i = 0; i < length; i++) {
             NBTElement arrayElement;
             arrayElement.setSettings(settings);
@@ -282,14 +265,13 @@ void NBTElement::decode(ByteBuffer& byteBuffer) {
     case NBTElementType::Compound: {
         NBTSettings settings = m_settings;
         settings.setIsInArray(false);
+        settings.setIsNetwork(!byteBuffer.getIsBigEndian() && settings.getIsNetwork());
         settings.setType(NBTElementType::End);
-        while (true) {
-            if (byteBuffer.getReadPointer() < byteBuffer.getBytes().size()) {
-                if (!byteBuffer.getBytes()[byteBuffer.getReadPointer()]) {
-                    byteBuffer.readByte();
-                    break;
-                }
-            } else break;
+        while (byteBuffer.getReadPointer() < byteBuffer.getBytes().size()) {
+            if (!byteBuffer.getBytes()[byteBuffer.getReadPointer()]) {
+                byteBuffer.readByte();
+                break;
+            }
             NBTElement childElement;
             childElement.setSettings(settings);
             childElement.decode(byteBuffer);

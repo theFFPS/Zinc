@@ -127,4 +127,11 @@ int TeleportFlags::encode() const {
     return result;
 }
 
+bool TeleportFlags::operator==(const TeleportFlags& flags) const {
+    return encode() == flags.encode();
+}
+bool TeleportFlags::operator!=(const TeleportFlags& flags) const {
+    return encode() != flags.encode();
+}
+
 }

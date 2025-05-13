@@ -23,10 +23,10 @@ public:
     }
 
     T& getValue() {
-        return m_value;
+        return m_value.value();
     }
     T getValue() const {
-        return m_value;
+        return m_value.value_or("");
     }
     int& getId() {
         return m_id;

@@ -1,5 +1,6 @@
 #include <type/ByteBuffer.h>
 #include <stdexcept>
+#include <sstream>
 
 namespace zinc {
 
@@ -48,6 +49,9 @@ size_t ByteBuffer::size() const {
 void ByteBuffer::writeBytes(const std::vector<char>& bytes) {
     m_mutex.lock();
     m_bytes.insert(m_bytes.end(), bytes.begin(), bytes.end());
+    std::stringstream ss;
+    ss << bytes.size();
+    m_logger.debug("Written " + ss.str() + " bytes using writeBytes()");
     m_mutex.unlock();
 }
 std::vector<char> ByteBuffer::readBytes(const size_t& length) {
@@ -59,6 +63,9 @@ std::vector<char> ByteBuffer::readBytes(const size_t& length) {
     std::copy(m_bytes.begin() + m_readPtr, m_bytes.begin() + m_readPtr + length, result.begin());
     m_mutex.lock();
     m_readPtr += length;
+    std::stringstream ss;
+    ss << length;
+    m_logger.debug("Read " + ss.str() + " bytes using readBytes()");
     m_mutex.unlock();
     return result;
 }
@@ -66,24 +73,28 @@ std::vector<char> ByteBuffer::readBytes(const size_t& length) {
 void ByteBuffer::writeByte(const char& c) {
     m_mutex.lock();
     m_bytes.push_back(c);
+    m_logger.debug("Written 1 byte using writeByte()");
     m_mutex.unlock();
 }
 char ByteBuffer::readByte() {
     char result = m_bytes[m_readPtr];
     m_mutex.lock();
     m_readPtr++;
+    m_logger.debug("Read 1 byte using readByte()");
     m_mutex.unlock();
     return result;
 }
 void ByteBuffer::writeUnsignedByte(const unsigned char& c) {
     m_mutex.lock();
     m_bytes.push_back((const char&)c);
+    m_logger.debug("Written 1 byte using writeUnsignedByte()");
     m_mutex.unlock();
 }
 unsigned char ByteBuffer::readUnsignedByte() {
     unsigned char result = (unsigned char) m_bytes[m_readPtr];
     m_mutex.lock();
     m_readPtr++;
+    m_logger.debug("Read 1 byte using readUnsignedByte()");
     m_mutex.unlock();
     return result;
 }
@@ -151,9 +162,6 @@ int ByteBuffer::readVarInt() {
         }
     }
     size_t size = getVarIntLength(value);
-    m_mutex.lock();
-    m_readPtr += size;
-    m_mutex.unlock();
     if (size > 5) {
         m_logger.error("VarInt is too big");
         return 0;
@@ -175,9 +183,6 @@ long ByteBuffer::readVarLong() {
         }
     }
     size_t size = getVarLongLength(value);
-    m_mutex.lock();
-    m_readPtr += size;
-    m_mutex.unlock();
     if (size > 10) {
         m_logger.error("VarLong is too big");
         return 0;
@@ -222,13 +227,16 @@ Identifier ByteBuffer::readIdentifier() {
 }
 
 void ByteBuffer::writePosition(const Vector3i& value) {
-    writeNumeric<long>((((long) value.getX() & 0x3FFFFFF) << 38) | ((value.getZ() & 0x3FFFFFF) << 12) | (value.getY() & 0xFFF));
+    writeNumeric<long>((((long) value.getX() & 0x3FFFFFFL) << 38) | ((value.getZ() & 0x3FFFFFFL) << 12) | (value.getY() & 0xFFFL));
 }
 Vector3i ByteBuffer::readPosition() {
     long longVal = readNumeric<long>();
-    int x = int(longVal >> 38);
-    int z = int((longVal >> 12) & 0x3FFFFFF);
-    int y = int(longVal & 0xFFF);
+    int x = static_cast<int>(longVal >> 38);
+    int z = static_cast<int>((longVal >> 12) & 0x3FFFFFFL);
+    int y = static_cast<int>(longVal & 0xFFFL);
+    x = (x << 6) >> 6;
+    z = (z << 6) >> 6;
+    y = (y << 20) >> 20;
     return Vector3i(x, y, z);
 }
 
@@ -240,9 +248,7 @@ float ByteBuffer::readAngle() {
 }
 
 void ByteBuffer::writeUUID(const uuids::uuid& uuid) {
-    m_mutex.lock();
-    for (const std::byte& c : uuid.as_bytes()) writeNumeric<std::byte>(c);
-    m_mutex.unlock();
+    for (const std::byte& c : uuid.as_bytes()) writeUnsignedByte((unsigned char) c);
 }
 uuids::uuid ByteBuffer::readUUID() {
     std::vector<char> bytes = readBytes(16);
@@ -343,32 +349,24 @@ TeleportFlags ByteBuffer::readTeleportFlags() {
     return TeleportFlags(readNumeric<int>());
 }
 
-void ByteBuffer::writeNBTElement(const NBTElement& nbtElement, const int& protocol) {
-    NBTSettings settings;
-    settings.setIsInArray(false);
-    settings.setIsNetwork(true);
-    settings.setProtocol(protocol);
-    settings.setType(NBTElementType::End);
-    writeNBTElement(nbtElement, settings);
-}
-void ByteBuffer::writeNBTElement(const NBTElement& nbtElement, const NBTSettings& settings) {
+void ByteBuffer::writeNBTElement(const NBTElement& nbtElement) {
     NBTElement element = nbtElement;
+    NBTSettings settings;
+    settings.setIsNetwork(true);
     element.setSettings(settings);
     element.encode(*this);
 }
-NBTElement ByteBuffer::readNBTElement(const int& protocol) {
+NBTElement ByteBuffer::readNBTElement() {
     NBTSettings settings;
-    settings.setIsInArray(false);
     settings.setIsNetwork(true);
-    settings.setProtocol(protocol);
-    settings.setType(NBTElementType::End);
-    return readNBTElement(settings);
+    return NBTElement(*this, settings);
 }
-NBTElement ByteBuffer::readNBTElement(const NBTSettings& settings) {
-    NBTElement element;
-    element.setSettings(settings);
-    element.decode(*this);
-    return element;
+
+bool ByteBuffer::operator==(const ByteBuffer& buffer) const {
+    return m_isBigEndian == buffer.getIsBigEndian() && m_readPtr == buffer.getReadPointer() && m_bytes == buffer.getBytes();
+}
+bool ByteBuffer::operator!=(const ByteBuffer& buffer) const {
+    return !operator==(buffer);
 }
 
 }

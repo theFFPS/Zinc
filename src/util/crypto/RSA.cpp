@@ -86,7 +86,7 @@ std::string RSAWrapper::getPublicKeyPEM() const {
 std::vector<unsigned char> RSAWrapper::getPublicKeyDER() const {
     if (!m_isKeyLoaded) return {};
     unsigned char* der = NULL;
-    int derLen = i2d_RSAPublicKey(m_rsa, &der);
+    int derLen = i2d_RSA_PUBKEY(m_rsa, &der);
     if (derLen <= 0) return {};
     std::vector<unsigned char> derVec(der, der + derLen);
     OPENSSL_free(der);
@@ -140,7 +140,7 @@ bool RSAWrapper::loadPrivateKeyFromPEM(const std::string& pem) {
 }
 bool RSAWrapper::loadPublicKeyFromDER(const std::vector<unsigned char>& der) {
     const unsigned char* derPtr = der.data();
-    RSA* loadedRSA = d2i_RSAPublicKey(NULL, &derPtr, der.size());
+    RSA* loadedRSA = d2i_RSA_PUBKEY(NULL, &derPtr, der.size());
     if (!loadedRSA) return false;
     if (m_rsa) RSA_free(m_rsa);
     m_rsa = loadedRSA;

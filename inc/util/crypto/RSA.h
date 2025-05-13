@@ -13,6 +13,7 @@ private:
     int m_padding;
 public:
     RSAWrapper() : m_rsa(RSA_new()), m_isKeyLoaded(false), m_padding(RSA_PKCS1_OAEP_PADDING) {}
+    RSAWrapper(const int& padding) : m_rsa(RSA_new()), m_isKeyLoaded(false), m_padding(padding) {}
     ~RSAWrapper() {
         if (m_rsa) {
             RSA_free(m_rsa);

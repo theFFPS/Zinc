@@ -33,6 +33,9 @@ void TextComponent::Format::setColor(const std::string& color) {
 void TextComponent::Format::setFont(const std::string& font) {
     m_font = font;
 }
+void TextComponent::Format::setFont(const Identifier& font) {
+    m_font = font;
+}
 void TextComponent::Format::setBold(const bool& isBold) {
     m_isBold = isBold;
 }
@@ -63,10 +66,10 @@ std::string& TextComponent::Format::getColor() {
 std::string TextComponent::Format::getColor() const {
     return m_color;
 }
-std::string& TextComponent::Format::getFont() {
+Identifier& TextComponent::Format::getFont() {
     return m_font;
 }
-std::string TextComponent::Format::getFont() const {
+Identifier TextComponent::Format::getFont() const {
     return m_font;
 }
 bool& TextComponent::Format::isBold() {
@@ -105,7 +108,119 @@ int& TextComponent::Format::getShadowColor() {
 int TextComponent::Format::getShadowColor() const {
     return m_shadowColor;
 }
+bool TextComponent::Format::operator==(const Format& format) const {
+    return m_color == format.getColor() && m_font == format.getFont() && m_isBold == format.isBold() && m_isItalic == format.isItalic() &&
+           m_isUnderlined == format.isUnderlined() && m_isStrikethrough == format.isStrikethrough() && m_isObfuscated == format.isObfuscated() &&
+           m_shadowColor == format.getShadowColor();
+}
+bool TextComponent::Format::operator!=(const Format& format) const {
+    return !operator==(format);
+}
 
-
+void TextComponent::Interactivity::ClickEvent::setAction(const Action& action) {
+    m_action = action;
+}
+void TextComponent::Interactivity::ClickEvent::setURL(const std::string& url) {
+    m_url = url;
+    m_action = Action::OpenURL;
+}
+void TextComponent::Interactivity::ClickEvent::setPath(const std::string& path) {
+    m_path = path;
+    m_action = Action::OpenFile;
+}
+void TextComponent::Interactivity::ClickEvent::setCommand(const std::string& command) {
+    m_command = command;
+}
+void TextComponent::Interactivity::ClickEvent::setPage(const int& page) {
+    m_page = page;
+    m_action = Action::ChangePage;
+}
+void TextComponent::Interactivity::ClickEvent::setCopyValue(const std::string& value) {
+    m_value = value;
+    m_action = Action::CopyToClipboard;
+}
+TextComponent::Interactivity::ClickEvent::Action& TextComponent::Interactivity::ClickEvent::getAction() {
+    return m_action;
+}
+TextComponent::Interactivity::ClickEvent::Action TextComponent::Interactivity::ClickEvent::getAction() const {
+    return m_action;
+}
+std::string& TextComponent::Interactivity::ClickEvent::getURL() {
+    return m_url;
+}
+std::string TextComponent::Interactivity::ClickEvent::getURL() const {
+    return m_url;
+}
+std::string& TextComponent::Interactivity::ClickEvent::getPath() {
+    return m_path;
+}
+std::string TextComponent::Interactivity::ClickEvent::getPath() const {
+    return m_path;
+}
+std::string& TextComponent::Interactivity::ClickEvent::getCommand() {
+    return m_command;
+}
+std::string TextComponent::Interactivity::ClickEvent::getCommand() const {
+    return m_command;
+}
+int& TextComponent::Interactivity::ClickEvent::getPage() {
+    return m_page;
+}
+int TextComponent::Interactivity::ClickEvent::getPage() const {
+    return m_page;
+}
+std::string& TextComponent::Interactivity::ClickEvent::getCopyValue() {
+    return m_value;
+}
+std::string TextComponent::Interactivity::ClickEvent::getCopyValue() const {
+    return m_value;
+}
+bool TextComponent::Interactivity::ClickEvent::operator==(const ClickEvent& event) const {
+    if (m_action != event.getAction()) return false;
+    switch (m_action) {
+    case Action::OpenURL: return m_url == event.getURL();
+    case Action::OpenFile: return m_path == event.getPath();
+    case Action::SuggestCommand: return m_command == event.getCommand();
+    case Action::RunCommand: return m_command == event.getCommand();
+    case Action::ChangePage: return m_page == event.getPage();
+    case Action::CopyToClipboard: return m_value == event.getCopyValue();
+    default: return true;
+    }
+}
+bool TextComponent::Interactivity::ClickEvent::operator!=(const ClickEvent& event) const {
+    return !operator==(event);
+}
+TextComponent::Interactivity::ClickEvent TextComponent::Interactivity::ClickEvent::OpenURL(const std::string& url) {
+    ClickEvent event;
+    event.setURL(url);
+    return event;
+}
+TextComponent::Interactivity::ClickEvent TextComponent::Interactivity::ClickEvent::OpenFile(const std::string& path) {
+    ClickEvent event;
+    event.setPath(path);
+    return event;
+}
+TextComponent::Interactivity::ClickEvent TextComponent::Interactivity::ClickEvent::RunCommand(const std::string& command) {
+    ClickEvent event;
+    event.setCommand(command);
+    event.setAction(Action::RunCommand);
+    return event;
+}
+TextComponent::Interactivity::ClickEvent TextComponent::Interactivity::ClickEvent::SuggestCommand(const std::string& command) {
+    ClickEvent event;
+    event.setCommand(command);
+    event.setAction(Action::SuggestCommand);
+    return event;
+}
+TextComponent::Interactivity::ClickEvent TextComponent::Interactivity::ClickEvent::ChangePage(const int& page) {
+    ClickEvent event;
+    event.setPage(page);
+    return event;
+}
+TextComponent::Interactivity::ClickEvent TextComponent::Interactivity::ClickEvent::CopyToClipboard(const std::string& value) {
+    ClickEvent event;
+    event.setCopyValue(value);
+    return event;
+}
 
 }
