@@ -15,8 +15,8 @@ namespace zinc {
 Logger m_zincLogger = Logger("ZincServer");
 
 ZincServer g_zincServer;
-std::map<Identifier, ZincPacket(*)(ByteBuffer&, const ZincConnection::State&)> g_zincServerPluginChannels = {
-    { Identifier("minecraft", "brand"), BrandChannel }
+std::map<std::string, ZincPacket(*)(ByteBuffer&, const ZincConnection::State&)> g_zincServerPluginChannels = {
+    { Identifier("minecraft", "brand").toString(), BrandChannel }
 };
 
 void ZincServer::start() {
@@ -235,10 +235,13 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             replyPacket.setId(6);
             connection->send(replyPacket);
             replyPacket.setId(4);
-            connection->m_lastKeepAlive = connection->m_lastPing = time(nullptr);
-            replyPacket.getData().writeNumeric<long>(connection->m_lastKeepAlive);
+            connection->m_info.m_networkInfo.m_lastKeepAlive = time(nullptr);
+            connection->m_info.m_networkInfo.m_verifyToken = RandomUtil::randomBytes(4);
+            replyPacket.getData().writeNumeric<long>(connection->m_info.m_networkInfo.m_lastKeepAlive);
             connection->send(replyPacket);
+            replyPacket.setData({});
             replyPacket.setId(5);
+            replyPacket.getData().writeArray<unsigned char>(connection->m_info.m_networkInfo.m_verifyToken, &ByteBuffer::writeUnsignedByte);
             connection->send(replyPacket);
             replyPacket.setData({});
             replyPacket.setId(12);
@@ -248,7 +251,7 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             break;
         }
         case 2: {
-            connection->send(g_zincServerPluginChannels[packet.getData().readIdentifier()](packet.getData(), connection->getState()));
+            connection->send(g_zincServerPluginChannels[packet.getData().readIdentifier().toString()](packet.getData(), connection->getState()));
             break;
         }
         case 3: {
@@ -257,14 +260,14 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
         }
         case 4: {
             long keepAlive = packet.getData().readNumeric<long>();
-            if (connection->m_lastKeepAlive != keepAlive) {
+            if (connection->m_info.m_networkInfo.m_lastKeepAlive != keepAlive) {
                 // send error via disconnect 2
-            }
+            } else connection->m_info.m_networkInfo.m_lastKeepAlive = -1;
             break;
         }
         case 5: {
-            long ping = packet.getData().readNumeric<long>();
-            if (connection->m_lastPing != ping) {
+            std::vector<unsigned char> ping = packet.getData().readArray<unsigned char>(&ByteBuffer::readUnsignedByte, 4);
+            if (connection->m_info.m_networkInfo.m_verifyToken != ping) {
                 // send error via disconnect 2
             }
             break;

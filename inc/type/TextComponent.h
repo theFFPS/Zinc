@@ -4,6 +4,7 @@
 #include <vector>
 #include "Vector.h"
 #include "Identifier.h"
+#include "nbt/NBTElement.h"
 #include <external/UUID.h>
 
 namespace zinc {
@@ -138,7 +139,7 @@ public:
             std::vector<TextComponent> m_value; // ShowText & ShowEntity
             std::string m_id; // ShowItem & ShowEntity
             int m_count; // ShowItem
-            // TODO components // ShowItem
+            std::vector<NBTElement> m_components; // ShowItem
             uuids::uuid m_uuid;
         public:
         };

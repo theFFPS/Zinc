@@ -20,6 +20,7 @@ struct ZincConnectionInfo {
         int m_serverPort;
         int m_protocolVersion;
         std::vector<unsigned char> m_verifyToken;
+        long m_lastKeepAlive;
     } m_networkInfo;
     struct PlayerInfo {
         std::string m_playerName;
@@ -55,7 +56,6 @@ private:
     std::mutex m_mutex;
 public:
     ZincConnectionInfo m_info;
-    long m_lastKeepAlive, m_lastPing;
 
     ZincConnection() : m_tcpConnection(TCPConnection()), m_state(State::Handshake) {}
     ZincConnection(const TCPConnection& connection) : m_tcpConnection(connection), m_state(State::Handshake) {}

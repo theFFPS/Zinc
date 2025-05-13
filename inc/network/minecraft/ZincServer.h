@@ -42,6 +42,6 @@ public:
 };
 
 extern ZincServer g_zincServer;
-extern std::map<Identifier, ZincPacket(*)(ByteBuffer&, const ZincConnection::State&)> g_zincServerPluginChannels;
+extern std::map<std::string, ZincPacket(*)(ByteBuffer&, const ZincConnection::State&)> g_zincServerPluginChannels;
 
 }

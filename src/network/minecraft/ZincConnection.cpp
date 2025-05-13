@@ -124,6 +124,7 @@ void ZincConnection::send(const ZincPacket& packet) {
     m_mutex.lock();
     m_tcpConnection.send(data);
     m_mutex.unlock();
+    Logger("ZincConnection").debug("Sent packet with id " + std::to_string(packet.getId()));
 }
 bool ZincConnection::operator==(const ZincConnection& connection) const {
     return m_tcpConnection == connection.getTCPConnection();

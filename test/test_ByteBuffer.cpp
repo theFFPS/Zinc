@@ -128,7 +128,9 @@ TEST(ByteBufferTest, WriteReadGameTypes) {
         zinc::NBTElement::Byte("byte", 73),
         zinc::NBTElement::Short("short", 12)
     });
+    zinc::ChatType chat (zinc::ChatTypeDecoration("hi", {}, zinc::NBTElement()), zinc::ChatTypeDecoration("hello", {}, zinc::NBTElement()));
     buffer.writeNBTElement(element);
+    buffer.writeChatType(chat);
 
     EXPECT_TRUE(buffer.readPosition() == position);
     EXPECT_TRUE(buffer.readAngle() == 0.125f);
@@ -147,6 +149,7 @@ TEST(ByteBufferTest, WriteReadGameTypes) {
     EXPECT_TRUE(buffer.readEnumSet<EnumT>(1) == enumSet);
     EXPECT_TRUE(buffer.readTeleportFlags() == flags);
     EXPECT_TRUE(buffer.readNBTElement() == element);
+    EXPECT_TRUE(buffer.readChatType() == chat);
 }
 
 int main(int argc, char **argv) {

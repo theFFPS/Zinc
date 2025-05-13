@@ -362,6 +362,42 @@ NBTElement ByteBuffer::readNBTElement() {
     return NBTElement(*this, settings);
 }
 
+void ByteBuffer::writeTextComponent(const TextComponent& textComponent) {
+
+}
+TextComponent ByteBuffer::readTextComponent() {
+    
+}
+
+void ByteBuffer::writeChatType(const ChatType& chatType) {
+    writeString(chatType.getChat().getTranslationKey());
+    std::vector<int> paramInt;
+    for (const auto& param : chatType.getChat().getParameters()) paramInt.push_back((int) param);
+    writePrefixedArray<int>(paramInt, &ByteBuffer::writeVarInt);
+    writeNBTElement(chatType.getChat().getStyle());
+    writeString(chatType.getNarration().getTranslationKey());
+    paramInt = {};
+    for (const auto& param : chatType.getChat().getParameters()) paramInt.push_back((int) param);
+    writePrefixedArray<int>(paramInt, &ByteBuffer::writeVarInt);
+    writeNBTElement(chatType.getNarration().getStyle());
+}
+ChatType ByteBuffer::readChatType() {
+    std::vector<int> paramInt;
+    ChatTypeDecoration chat, narration;
+    std::vector<ChatTypeDecoration::Parameter> paramsChat, paramsNarration;
+    chat.setTranslationKey(readString());
+    paramInt = readPrefixedArray<int>(&ByteBuffer::readVarInt);
+    for (const int& param : paramInt) paramsChat.push_back((ChatTypeDecoration::Parameter) param);
+    chat.setParameters(paramsChat);
+    chat.setStyle(readNBTElement());
+    narration.setTranslationKey(readString());
+    paramInt = readPrefixedArray<int>(&ByteBuffer::readVarInt);
+    for (const int& param : paramInt) paramsNarration.push_back((ChatTypeDecoration::Parameter) param);
+    narration.setParameters(paramsNarration);
+    narration.setStyle(readNBTElement());
+    return ChatType(chat, narration);
+}
+
 bool ByteBuffer::operator==(const ByteBuffer& buffer) const {
     return m_isBigEndian == buffer.getIsBigEndian() && m_readPtr == buffer.getReadPointer() && m_bytes == buffer.getBytes();
 }

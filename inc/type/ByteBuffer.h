@@ -17,6 +17,8 @@
 #include "SoundEvent.h"
 #include "BitSet.h"
 #include "TeleportFlags.h"
+#include "TextComponent.h"
+#include "ChatType.h"
 #include "nbt/NBTElement.h"
 
 namespace zinc {
@@ -235,6 +237,12 @@ public:
 
     void writeNBTElement(const NBTElement& nbtElement);
     NBTElement readNBTElement();
+
+    void writeTextComponent(const TextComponent& textComponent);
+    TextComponent readTextComponent();
+
+    void writeChatType(const ChatType& chatType);
+    ChatType readChatType();
 
     bool operator==(const ByteBuffer& buffer) const;
     bool operator!=(const ByteBuffer& buffer) const;
