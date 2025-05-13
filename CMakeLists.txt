@@ -67,6 +67,8 @@ target_link_libraries(test_ZLibUtil PRIVATE zinc_static GTest::gtest)
 add_executable(test_AES test/test_AES.cpp)
 target_link_libraries(test_AES PRIVATE zinc_static GTest::gtest)
 
+include_directories(${libevent_INCLUDE_DIRS})
+
 target_link_libraries(zinc_static PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto libevent::libevent zlib-ng::zlib-ng curlpp::curlpp)
 target_compile_options(zinc PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native)
 
