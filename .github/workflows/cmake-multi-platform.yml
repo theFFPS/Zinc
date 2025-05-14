@@ -56,7 +56,7 @@ jobs:
         cache-name: cache-conan-modules
       with:
         path: ~/.conan2
-        key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt', '**/conanfile.py') }}
+        key: ${{ runner.os }}-conan-${{ hashFiles('**/conanfile.txt') }}
         restore-keys: |
          ${{ runner.os }}-conan-
 
