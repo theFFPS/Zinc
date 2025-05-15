@@ -1,15 +1,5 @@
 Name 	Size (bytes) 	Encodes 	Notes
-Text Component 	Varies 	See Text formatting#Text components 	Encoded as a NBT Tag, with the type of tag used depending on the case:
-
-    As a String Tag: For components only containing text (no styling, no events etc.).
-    As a Compound Tag: Every other case.
-
-JSON Text Component 	≥ 1
-≤ (262144×3) + 3 	See Text formatting#Text components 	The maximum permitted length when decoding is 262144, but the vanilla server since 1.20.3 refuses to encode longer than 32767. This may be a bug.
 EntityMetadata 	Varies 	Miscellaneous information about an entity 	See Minecraft Wiki:Projects/wiki.vg merge/Entity metadata#Entity Metadata Format
-Slot 	Varies 	An item stack in an inventory or container 	See Slot Data
-HashedSlot 	Varies 	Similar to Slot, but with the data component values being sent as a hash instead of their actual contents 	See Slot Data#Hashed Format
-ChatType 	Varies 	See #Chat Type below 	Parameters for a direct chat type.
 RecipeDisplay 	Varies 	See Recipes#Recipe Display structure 	Description of a recipe for use for use by the client.
 SlotDisplay 	Varies 	See Recipes#Slot Display structure 	Description of a recipe ingredient slot for use for use by the client.
 ChunkData 	Varies 	See #Chunk Data below 	

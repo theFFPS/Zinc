@@ -2,9 +2,9 @@
 
 namespace zinc {
 
-ZincPacket BrandChannel(ByteBuffer& buffer, const ZincConnection::State& state) {
+ZincPacket BrandChannel(ByteBuffer& buffer, ZincConnection* connection) {
     ZincPacket packet;
-    if (state == ZincConnection::State::Login) {
+    if (connection->getState() == ZincConnection::State::Login) {
         packet.setId(0);
         packet.getData().writeString(
             "[\"\",{\"text\":\"Zinc Login Error\",\"bold\":true,\"color\":\"dark_red\"},{\"text\":\"\n\"},"

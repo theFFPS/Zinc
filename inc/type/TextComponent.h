@@ -5,6 +5,7 @@
 #include "Vector.h"
 #include "Identifier.h"
 #include "nbt/NBTElement.h"
+#include "nbt/NBTSettings.h"
 #include <external/UUID.h>
 
 namespace zinc {
@@ -37,7 +38,21 @@ struct TextComponent {
 public:
     enum class Type { Text, Translatable, Score, Selector, Keybind, NBT, Undefined };
     struct Content {
-
+        std::string m_text; // Text
+        std::string m_translate; // Translatable
+        std::string m_fallback; // Translatable
+        std::vector<TextComponent> m_with; // Translatable
+        std::string m_name; // Score
+        std::string m_objective; // Score
+        std::string m_selector; // Selector
+        NBTElement m_separator; // Selector & NBT
+        std::string m_keybind; // Keybind
+        std::string m_source; // NBT
+        std::string m_nbt; // NBT
+        bool m_interpret; // NBT
+        std::string m_block; // NBT
+        std::string m_entity; // NBT
+        std::string m_storage; // NBT
     };
     struct Format {
     private:
@@ -134,28 +149,33 @@ public:
         struct HoverEvent {
         public:
             enum class Action { ShowText, ShowItem, ShowEntity, Undefined };
-        private:
+            
             Action m_action = Action::Undefined;
             std::vector<TextComponent> m_value; // ShowText & ShowEntity
             std::string m_id; // ShowItem & ShowEntity
             int m_count; // ShowItem
             std::vector<NBTElement> m_components; // ShowItem
             uuids::uuid m_uuid;
-        public:
         };
-    private:
         std::string m_insertion;
         ClickEvent m_clickEvent;
         HoverEvent m_hoverEvent;
-    public:
     };
-private:
-    Type m_type = Type::Undefined;
+    Type m_type;
     Content m_content;
     std::vector<TextComponent> m_extra;
     Format m_format;
     Interactivity m_interactivity;
-public:
+    std::string m_tag;
+    
+    TextComponent() : m_type(Type::Text) {}
+    TextComponent(const std::vector<char>& bytes, const NBTSettings& settings);
+    TextComponent(const NBTElement& NBT);
+    void decode(const NBTElement& NBT);
+    NBTElement encode(const NBTSettings& settings) const;
+
+    bool operator==(const TextComponent& text) const;
+    bool operator!=(const TextComponent& text) const;
 };
 
 }

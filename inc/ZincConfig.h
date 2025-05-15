@@ -19,7 +19,6 @@ public:
     bool m_whitelist = false;
     bool m_allowSurvivalFlight = false;
     bool m_allowPVP = true;
-    bool m_enableHotReload = false;
     int m_backupInterval = 1440;
     int m_viewDistance = 10;
     int m_serverPort = 25565;

@@ -1,4 +1,5 @@
 #include <type/TextComponent.h>
+#include <type/ByteBuffer.h>
 #include <external/JSON.h>
 
 namespace zinc {
@@ -221,6 +222,352 @@ TextComponent::Interactivity::ClickEvent TextComponent::Interactivity::ClickEven
     ClickEvent event;
     event.setCopyValue(value);
     return event;
+}
+
+TextComponent::TextComponent(const std::vector<char>& bytes, const NBTSettings& settings) {
+    ByteBuffer buffer (bytes);
+    NBTElement NBT (settings);
+    NBT.decode(buffer);
+    decode(NBT);
+}
+TextComponent::TextComponent(const NBTElement& NBT) {
+    decode(NBT);
+}
+void TextComponent::decode(const NBTElement& NBT) {
+    m_tag = NBT.getTag();
+    if (NBT.getType() == NBTElementType::String) {
+        m_type = Type::Text;
+        m_content.m_text = NBT.getString();
+        return;
+    }
+    if (NBT.getType() != NBTElementType::Compound) return;
+    bool hasTypeTag = false;
+    size_t i = 0;
+    for (const NBTElement& element : NBT.getChildElements()) {
+        if (element.getTag() == "type") {
+            hasTypeTag = true;
+            break;
+        }
+        i++;
+    }
+    if (hasTypeTag) {
+        std::string type = NBT.getChildElements()[i].getString();
+        if (type == "text") m_type = Type::Text;
+        if (type == "translatable") m_type = Type::Translatable;
+        if (type == "score") m_type = Type::Score;
+        if (type == "selector") m_type = Type::Selector;
+        if (type == "keybind") m_type = Type::Keybind;
+        if (type == "nbt") m_type = Type::NBT;
+    } else {
+        for (const NBTElement& element : NBT.getChildElements()) {
+            if (element.getTag() == "text") m_type = Type::Text;
+            if (element.getTag() == "translate") m_type = Type::Translatable;
+            if (element.getTag() == "score") m_type = Type::Score;
+            if (element.getTag() == "selector") m_type = Type::Selector;
+            if (element.getTag() == "keybind") m_type = Type::Keybind;
+            if (element.getTag() == "nbt") m_type = Type::NBT;
+        }
+    }
+    for (const NBTElement& element : NBT.getChildElements()) {
+        if (element.getTag() == "color") m_format.setColor(element.getString());
+        if (element.getTag() == "font") m_format.setFont(element.getString());
+        if (element.getTag() == "bold") m_format.setBold(element.getByte());
+        if (element.getTag() == "italic") m_format.setItalic(element.getByte());
+        if (element.getTag() == "obfuscated") m_format.setObfuscated(element.getByte());
+        if (element.getTag() == "underlined") m_format.setUnderlined(element.getByte());
+        if (element.getTag() == "strikethrough") m_format.setStrikethrough(element.getByte());
+        if (element.getTag() == "shadow_color") {
+            if (element.getType() == NBTElementType::Int) m_format.setShadowColor(element.getInt());
+            if (element.getType() == NBTElementType::List && element.getChildElements().size() == 4) {
+                if (element.getChildElements()[0].getType() == NBTElementType::Float) {
+                    m_format.setShadowColor(Vector3f(
+                        element.getChildElements()[0].getFloat(), 
+                        element.getChildElements()[1].getFloat(), 
+                        element.getChildElements()[2].getFloat()
+                    ));
+                }
+            }
+        }
+
+        if (element.getTag() == "insertion") m_interactivity.m_insertion = element.getString();
+        if (element.getTag() == "click_event") {
+            hasTypeTag = false;
+            i = 0;
+            for (const NBTElement& subElement : element.getChildElements()) {
+                if (subElement.getTag() == "action") {
+                    hasTypeTag = true;
+                    break;
+                }
+                i++;
+            }
+            if (hasTypeTag) {
+                std::string type = element.getChildElements()[i].getString();
+                if (type == "open_url") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::OpenURL);
+                if (type == "open_file") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::OpenFile);
+                if (type == "run_command") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::RunCommand);
+                if (type == "suggest_command") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::SuggestCommand);
+                if (type == "change_page") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::ChangePage);
+                if (type == "copy_to_clipboard") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::CopyToClipboard);
+            } else {
+                for (const NBTElement& subElement : element.getChildElements()) {
+                    if (subElement.getTag() == "url") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::OpenURL);
+                    if (subElement.getTag() == "path") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::OpenFile);
+                    if (subElement.getTag() == "command") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::RunCommand);
+                    if (subElement.getTag() == "page") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::ChangePage);
+                    if (subElement.getTag() == "value") m_interactivity.m_clickEvent.setAction(Interactivity::ClickEvent::Action::CopyToClipboard);
+                }
+            }
+            for (const NBTElement& subElement : element.getChildElements()) {
+                if (subElement.getTag() == "url") m_interactivity.m_clickEvent.setURL(subElement.getString());
+                if (subElement.getTag() == "path") m_interactivity.m_clickEvent.setPath(subElement.getString());
+                if (subElement.getTag() == "command") m_interactivity.m_clickEvent.setCommand(subElement.getString());
+                if (subElement.getTag() == "page") m_interactivity.m_clickEvent.setPage(subElement.getInt());
+                if (subElement.getTag() == "value") m_interactivity.m_clickEvent.setCopyValue(subElement.getString());
+            } 
+        }
+        if (element.getTag() == "hover_event") {
+            hasTypeTag = false;
+            i = 0;
+            for (const NBTElement& subElement : element.getChildElements()) {
+                if (subElement.getTag() == "action") {
+                    hasTypeTag = true;
+                    break;
+                }
+                i++;
+            }
+            if (hasTypeTag) {
+                std::string type = element.getChildElements()[i].getString();
+                if (type == "show_text") m_interactivity.m_hoverEvent.m_action = Interactivity::HoverEvent::Action::ShowText;
+                if (type == "show_item") m_interactivity.m_hoverEvent.m_action = Interactivity::HoverEvent::Action::ShowItem;
+                if (type == "show_entity") m_interactivity.m_hoverEvent.m_action = Interactivity::HoverEvent::Action::ShowEntity;
+            } else {
+                for (const NBTElement& subElement : element.getChildElements()) {
+                    if (subElement.getTag() == "value") m_interactivity.m_hoverEvent.m_action = Interactivity::HoverEvent::Action::ShowText;
+                    if (subElement.getTag() == "components") m_interactivity.m_hoverEvent.m_action = Interactivity::HoverEvent::Action::ShowItem;
+                    if (subElement.getTag() == "uuid") m_interactivity.m_hoverEvent.m_action = Interactivity::HoverEvent::Action::ShowEntity;
+                }
+            }
+            for (const NBTElement& subElement : element.getChildElements()) {
+                if (subElement.getTag() == "value") {
+                    if (subElement.getType() == NBTElementType::List) {
+                        for (const NBTElement& subSubElement : subElement.getChildElements()) m_interactivity.m_hoverEvent.m_value.push_back(subSubElement);
+                    } else m_interactivity.m_hoverEvent.m_value = {subElement};
+                }
+                if (subElement.getTag() == "id") m_interactivity.m_hoverEvent.m_id = subElement.getString();
+                if (subElement.getTag() == "count") m_interactivity.m_hoverEvent.m_count = subElement.getInt();
+                if (subElement.getTag() == "name") m_interactivity.m_hoverEvent.m_value = {subElement};
+                if (subElement.getTag() == "uuid") {
+                    if (subElement.getType() == NBTElementType::List && subElement.getChildElements().size() == 4) {
+                        if (subElement.getChildElements()[0].getType() == NBTElementType::Int) {
+                            ByteBuffer buffer;
+                            for (const NBTElement& subSubElement : subElement.getChildElements()) buffer.writeNumeric<int>(subSubElement.getInt());
+                            m_interactivity.m_hoverEvent.m_uuid = buffer.readUUID();
+                        }
+                    } else if (subElement.getType() == NBTElementType::IntArray && subElement.getIntArray().size() == 4) {
+                        ByteBuffer buffer;
+                        buffer.writeArray<int>(subElement.getIntArray(), &ByteBuffer::writeNumeric<int>);
+                        m_interactivity.m_hoverEvent.m_uuid = buffer.readUUID();
+                    } else m_interactivity.m_hoverEvent.m_uuid = uuids::uuid::from_string(subElement.getString()).value();
+                }
+                if (subElement.getTag() == "components") m_interactivity.m_hoverEvent.m_components = subElement.getChildElements();
+            }
+        }
+
+        switch (m_type) {
+        case Type::Text: {
+            if (element.getTag() == "text") m_content.m_text = element.getString();
+            break;
+        }
+        case Type::Translatable: {
+            if (element.getTag() == "translate") m_content.m_translate = element.getString();
+            if (element.getTag() == "fallback") m_content.m_fallback = element.getString();
+            if (element.getTag() == "with") {
+                for (const NBTElement& subElement : element.getChildElements()) m_content.m_with.push_back(subElement);
+            }
+            break;
+        }
+        case Type::Score: {
+            if (element.getTag() == "score") {
+                for (const NBTElement& subElement : element.getChildElements()) {
+                    if (subElement.getTag() == "name") m_content.m_name = element.getString();
+                    if (subElement.getTag() == "objective") m_content.m_objective = element.getString();
+                } 
+            }
+            break;
+        }
+        case Type::Selector: {
+            if (element.getTag() == "selector") m_content.m_selector = element.getString();
+            if (element.getTag() == "separator") m_content.m_separator = element;
+            break;
+        }
+        case Type::Keybind: {
+            if (element.getTag() == "keybind") m_content.m_keybind = element.getString();
+            break;
+        }
+        case Type::NBT: {
+            if (element.getTag() == "source") m_content.m_source = element.getString();
+            if (element.getTag() == "nbt") m_content.m_nbt = element.getString();
+            if (element.getTag() == "interpret") m_content.m_interpret = element.getByte();
+            if (element.getTag() == "separator") m_content.m_separator = element;
+            if (element.getTag() == "block") m_content.m_block = element.getString();
+            if (element.getTag() == "entity") m_content.m_entity = element.getString();
+            if (element.getTag() == "storage") m_content.m_storage = element.getString();
+            break;
+        }
+        default: break;
+        }
+
+        if (element.getTag() == "extra") {
+            for (const NBTElement& subElement : element.getChildElements()) m_extra.push_back(subElement);
+        }
+    }
+}
+NBTElement TextComponent::encode(const NBTSettings& settings) const {
+    std::string typeString;
+    switch (m_type) {
+    case Type::Text: typeString = "text"; break;
+    case Type::Translatable: typeString = "translatable"; break;
+    case Type::Score: typeString = "score"; break;
+    case Type::Selector: typeString = "selector"; break;
+    case Type::Keybind: typeString = "keybind"; break;
+    case Type::NBT: typeString = "nbt"; break;
+    default: break;
+    }
+    NBTElement clickEvent = NBTElement::Compound("click_event", {});
+    NBTElement hoverEvent = NBTElement::Compound("hover_event", {});
+    NBTElement NBT = NBTElement::Compound(m_tag, {
+        NBTElement::String("type", typeString),
+        NBTElement::String("insertion", m_interactivity.m_insertion),
+        NBTElement::String("color", m_format.getColor()),
+        NBTElement::String("font", m_format.getFont().toString()),
+        NBTElement::Byte("bold", m_format.isBold()),
+        NBTElement::Byte("italic", m_format.isItalic()),
+        NBTElement::Byte("strikethrough", m_format.isStrikethrough()),
+        NBTElement::Byte("underlined", m_format.isUnderlined()),
+        NBTElement::Byte("obfuscated", m_format.isObfuscated()),
+        NBTElement::Int("shadow_color", m_format.getShadowColor())
+    }, settings);
+    NBTElement extra = NBTElement::List("extra", {});
+    for (const TextComponent& text : m_extra) extra.getChildElements().push_back(text.encode(settings));
+    NBT.getChildElements().push_back(extra);
+    switch (m_type) {
+    case Type::Text: NBT.getChildElements().push_back(NBTElement::String("text", m_content.m_text)); break;
+    case Type::Translatable: {
+        NBT.getChildElements().push_back(NBTElement::String("translate", m_content.m_translate));
+        NBT.getChildElements().push_back(NBTElement::String("fallback", m_content.m_fallback));
+        NBTElement with = NBTElement::List("with", {});
+        for (const TextComponent& text : m_content.m_with) with.getChildElements().push_back(text.encode(settings));
+        NBT.getChildElements().push_back(with);
+        break;
+    }
+    case Type::Score: NBT.getChildElements().push_back(NBTElement::Compound("score", {
+        NBTElement::String("name", m_content.m_name),
+        NBTElement::String("objective", m_content.m_objective)
+    })); break;
+    case Type::Selector: {
+        NBT.getChildElements().push_back(NBTElement::String("selector", m_content.m_selector)); break;
+        NBTElement separator = m_content.m_separator;
+        separator.setTag("separator");
+        NBT.getChildElements().push_back(separator); break;
+        break;
+    }
+    case Type::Keybind: NBT.getChildElements().push_back(NBTElement::String("keybind", m_content.m_keybind)); break;
+    case Type::NBT: {
+        NBT.getChildElements().push_back(NBTElement::String("source", m_content.m_source));
+        NBT.getChildElements().push_back(NBTElement::String("nbt", m_content.m_nbt));
+        NBT.getChildElements().push_back(NBTElement::Byte("interpret", m_content.m_interpret));
+        NBTElement separator = m_content.m_separator;
+        separator.setTag("separator");
+        NBT.getChildElements().push_back(separator); break;
+        NBT.getChildElements().push_back(NBTElement::String("block", m_content.m_block));
+        NBT.getChildElements().push_back(NBTElement::String("entity", m_content.m_entity));
+        NBT.getChildElements().push_back(NBTElement::String("storage", m_content.m_storage));
+        break;
+    }
+    default: break;
+    }
+    std::string action;
+    switch (m_interactivity.m_clickEvent.getAction()) {
+    case Interactivity::ClickEvent::Action::OpenURL: action = "open_url"; break;
+    case Interactivity::ClickEvent::Action::OpenFile: action = "open_path"; break;
+    case Interactivity::ClickEvent::Action::RunCommand: action = "run_command"; break;
+    case Interactivity::ClickEvent::Action::SuggestCommand: action = "suggest_command"; break;
+    case Interactivity::ClickEvent::Action::ChangePage: action = "change_page"; break;
+    case Interactivity::ClickEvent::Action::CopyToClipboard: action = "copy_to_clipboard"; break;
+    default: break;
+    }
+    clickEvent.getChildElements().push_back(NBTElement::String("action", action));
+    switch (m_interactivity.m_clickEvent.getAction()) {
+    case Interactivity::ClickEvent::Action::OpenURL: {
+        clickEvent.getChildElements().push_back(NBTElement::String("url", m_interactivity.m_clickEvent.getURL()));
+        break;
+    }
+    case Interactivity::ClickEvent::Action::OpenFile: {
+        clickEvent.getChildElements().push_back(NBTElement::String("path", m_interactivity.m_clickEvent.getPath()));
+        break;
+    }
+    case Interactivity::ClickEvent::Action::RunCommand: {
+        clickEvent.getChildElements().push_back(NBTElement::String("command", m_interactivity.m_clickEvent.getCommand()));
+        break;
+    }
+    case Interactivity::ClickEvent::Action::SuggestCommand: {
+        clickEvent.getChildElements().push_back(NBTElement::String("command", m_interactivity.m_clickEvent.getCommand()));
+        break;
+    }
+    case Interactivity::ClickEvent::Action::ChangePage: {
+        clickEvent.getChildElements().push_back(NBTElement::Int("page", m_interactivity.m_clickEvent.getPage()));
+        break;
+    }
+    case Interactivity::ClickEvent::Action::CopyToClipboard: {
+        clickEvent.getChildElements().push_back(NBTElement::String("value", m_interactivity.m_clickEvent.getCopyValue()));
+        break;
+    }
+    default: break;
+    }
+
+    action;
+    switch (m_interactivity.m_hoverEvent.m_action) {
+    case Interactivity::HoverEvent::Action::ShowText: action = "show_text"; break;
+    case Interactivity::HoverEvent::Action::ShowItem: action = "show_item"; break;
+    case Interactivity::HoverEvent::Action::ShowEntity: action = "show_entity"; break;
+    default: break;
+    }
+    hoverEvent.getChildElements().push_back(NBTElement::String("action", action));
+    switch (m_interactivity.m_hoverEvent.m_action) {
+    case Interactivity::HoverEvent::Action::ShowText: {
+        NBTElement value;
+        if (m_interactivity.m_hoverEvent.m_value.empty()) value = NBTElement::Compound("value", {});
+        else value = m_interactivity.m_hoverEvent.m_value[0].encode(settings);
+        hoverEvent.getChildElements().push_back(value);
+        break;
+    }
+    case Interactivity::HoverEvent::Action::ShowItem: {
+        hoverEvent.getChildElements().push_back(NBTElement::String("id", m_interactivity.m_hoverEvent.m_id));
+        hoverEvent.getChildElements().push_back(NBTElement::Int("count", m_interactivity.m_hoverEvent.m_count));
+        hoverEvent.getChildElements().push_back(NBTElement::Compound("compound", m_interactivity.m_hoverEvent.m_components));
+        break;
+    }
+    case Interactivity::HoverEvent::Action::ShowEntity: {
+        NBTElement value;
+        if (m_interactivity.m_hoverEvent.m_value.empty()) value = NBTElement::Compound("value", {});
+        else value = m_interactivity.m_hoverEvent.m_value[0].encode(settings);
+        hoverEvent.getChildElements().push_back(value);
+        hoverEvent.getChildElements().push_back(NBTElement::String("id", m_interactivity.m_hoverEvent.m_id));
+        hoverEvent.getChildElements().push_back(NBTElement::String("uuid", uuids::to_string(m_interactivity.m_hoverEvent.m_uuid)));
+        break;
+    }
+    default: break;
+    }
+
+    NBT.getChildElements().push_back(clickEvent);
+    NBT.getChildElements().push_back(hoverEvent);
+    return NBT;
+}
+bool TextComponent::operator==(const TextComponent& text) const {
+    return encode(NBTSettings()) == text.encode(NBTSettings());
+}
+bool TextComponent::operator!=(const TextComponent& text) const {
+    return encode(NBTSettings()) != text.encode(NBTSettings());
 }
 
 }

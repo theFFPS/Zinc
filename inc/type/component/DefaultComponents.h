@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../ByteBuffer.h"
+#include "../GameTypes.h"
 
 namespace zinc {
 

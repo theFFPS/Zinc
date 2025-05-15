@@ -6,7 +6,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 list(FILTER SOURCES EXCLUDE REGEX ".*_test\\.cc$")
+file(GLOB_RECURSE SDK_SOURCES "zincsdk/src/*.cpp")
+list(FILTER SDK_SOURCES EXCLUDE REGEX ".*_test\\.cc$")
 include_directories(inc)
+include_directories(zincsdk/include)
 
 if(TARGET CURL::libcurl)
     message(STATUS "Using Conan-provided CURL target")
@@ -46,8 +49,12 @@ else()
 endif()
 
 add_library(zinc_static STATIC ${SOURCES})
+add_library(zincsdk STATIC ${SDK_SOURCES})
+add_library(zincsdk_shared SHARED ${SDK_SOURCES})
+
 add_executable(zinc src/main.cc)
 target_link_libraries(zinc PRIVATE zinc_static)
+target_link_libraries(zincsdk_shared PRIVATE zinc_static)
 
 add_executable(test_NBT test/test_NBT.cpp)
 target_link_libraries(test_NBT PRIVATE zinc_static GTest::gtest)
@@ -68,8 +75,14 @@ add_executable(test_AES test/test_AES.cpp)
 target_link_libraries(test_AES PRIVATE zinc_static GTest::gtest)
 
 target_link_libraries(zinc_static PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto libevent::libevent zlib-ng::zlib-ng curlpp::curlpp)
+target_link_libraries(zincsdk PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto libevent::libevent zlib-ng::zlib-ng curlpp::curlpp)
+target_link_libraries(zincsdk_shared PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto libevent::libevent zlib-ng::zlib-ng curlpp::curlpp)
 target_link_libraries(zinc PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto libevent::libevent zlib-ng::zlib-ng curlpp::curlpp)
-target_compile_options(zinc PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native)
+
+target_compile_options(zinc_static PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC)
+target_compile_options(zincsdk PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC)
+target_compile_options(zincsdk_shared PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC)
+target_compile_options(zinc PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC)
 
 enable_testing()
 add_test(NAME ZLibUtilTest COMMAND test_ZLibUtil)

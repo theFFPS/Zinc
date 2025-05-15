@@ -363,10 +363,12 @@ NBTElement ByteBuffer::readNBTElement() {
 }
 
 void ByteBuffer::writeTextComponent(const TextComponent& textComponent) {
-
+    NBTElement NBT = textComponent.encode(NBTSettings(false, true, NBTElementType::End));
+    writeNBTElement(NBT);
 }
 TextComponent ByteBuffer::readTextComponent() {
-    
+    NBTElement NBT = readNBTElement();
+    return TextComponent(NBT);
 }
 
 void ByteBuffer::writeChatType(const ChatType& chatType) {
@@ -396,6 +398,13 @@ ChatType ByteBuffer::readChatType() {
     narration.setParameters(paramsNarration);
     narration.setStyle(readNBTElement());
     return ChatType(chat, narration);
+}
+
+void ByteBuffer::writeSlot(const Slot& slot) {
+    writeByteArray(slot.toBytes());
+}
+void ByteBuffer::writeHashedSlot(const Slot& slot) {
+    writeByteArray(slot.toBytesHashed());
 }
 
 bool ByteBuffer::operator==(const ByteBuffer& buffer) const {

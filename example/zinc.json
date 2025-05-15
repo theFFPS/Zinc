@@ -11,7 +11,6 @@
  },
  "security": {
   "backup_interval_minutes": 1440,
-  "enable_hot_reload": false,
   "max_player_count": 20,
   "online_mode": true,
   "prevent_proxy_connections": true,

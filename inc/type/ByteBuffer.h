@@ -19,6 +19,7 @@
 #include "TeleportFlags.h"
 #include "TextComponent.h"
 #include "ChatType.h"
+#include "Slot.h"
 #include "nbt/NBTElement.h"
 
 namespace zinc {
@@ -243,6 +244,9 @@ public:
 
     void writeChatType(const ChatType& chatType);
     ChatType readChatType();
+
+    void writeSlot(const Slot& slot);
+    void writeHashedSlot(const Slot& slot);
 
     bool operator==(const ByteBuffer& buffer) const;
     bool operator!=(const ByteBuffer& buffer) const;

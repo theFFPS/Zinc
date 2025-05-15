@@ -26,7 +26,7 @@ public:
         return m_value.value();
     }
     T getValue() const {
-        return m_value.value_or("");
+        return m_value.value_or(T{});
     }
     int& getId() {
         return m_id;

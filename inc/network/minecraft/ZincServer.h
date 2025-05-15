@@ -14,6 +14,7 @@ private:
     int m_port;
     std::map<evutil_socket_t, ZincConnection*> m_clients;
     RSAWrapper m_rsa = RSAWrapper(RSA_PKCS1_PADDING);
+    std::map<std::vector<unsigned char>, std::string> m_openedLoginPluginChannels;
 public:
     int m_onlinePlayers = 0;
 
@@ -36,12 +37,19 @@ public:
     void removeClient(evutil_socket_t fd);
     ZincConnection* getClient(evutil_socket_t fd);
 
+    std::vector<unsigned char> openLoginPluginChannel(const std::string& channel);
+    std::string getLoginPluginChannel(const std::vector<unsigned char>& id);
+    bool isLoginPluginChannelOpened(const std::vector<unsigned char>& id);
+    void closeLoginPluginChannel(const std::vector<unsigned char>& id);
+
     static void onAccept(evconnlistener* listener, evutil_socket_t fd, struct sockaddr* addr, int socklen, void* ptr);
     static void onRead(bufferevent* bev, void* ptr);
     static void onEvent(bufferevent *bev, short events, void *ctx);
 };
 
 extern ZincServer g_zincServer;
-extern std::map<std::string, ZincPacket(*)(ByteBuffer&, const ZincConnection::State&)> g_zincServerPluginChannels;
+extern std::map<std::string, ZincPacket(*)(ByteBuffer&, ZincConnection*)> g_zincServerPluginChannels;
+extern std::map<std::string, void(*)(std::optional<std::vector<char>>&, ZincConnection*)> g_zincCookieResponseParsers;
+extern std::map<ZincConnection::State, std::vector<std::string>> g_zincCookieRequests;
 
 }

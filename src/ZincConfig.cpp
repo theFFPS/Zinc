@@ -16,8 +16,7 @@ void ZincConfig::save(const std::string& workdir) {
             { "prevent_proxy_connections", m_preventProxyConnections },
             { "whitelist", m_whitelist },
             { "max_player_count", m_maxPlayerCount },
-            { "backup_interval_minutes", m_backupInterval },
-            { "enable_hot_reload", m_enableHotReload }
+            { "backup_interval_minutes", m_backupInterval }
         } },
         { "game", {
             { "allow_pvp", m_allowPVP },
@@ -58,7 +57,6 @@ void ZincConfig::load(const std::string& workdir) {
     m_whitelist = JSON["security"]["whitelist"];
     m_maxPlayerCount = JSON["security"]["max_player_count"];
     m_backupInterval = JSON["security"]["backup_interval_minutes"];
-    m_enableHotReload = JSON["security"]["enable_hot_reload"];
 
     m_allowPVP = JSON["game"]["allow_pvp"];
     m_allowSurvivalFlight = JSON["game"]["allow_survival_flight"];

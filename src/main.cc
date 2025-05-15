@@ -3,6 +3,7 @@
 #include <ZincConfig.h>
 #include <network/minecraft/ZincServer.h>
 #include <network/srvctl/SrvCtlServer.h>
+#include <util/crypto/CRC32.h>
 #include <stdexcept>
 #include <thread>
 
@@ -16,6 +17,7 @@ void ThreadSrvCtl() {
 }
 
 int main(int argc, char **argv) {
+    zinc::initCRC32();
     try {
         zinc::Logger("Main").info("Starting Zinc server...");
         zinc::g_zincArguments.parse(argc, argv);

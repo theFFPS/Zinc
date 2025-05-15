@@ -74,9 +74,11 @@ TEST(ByteBufferTest, WriteReadStrings) {
     buffer.writeString("Hello World!");
     zinc::Identifier identifier ("zinc", "test");
     buffer.writeIdentifier(identifier);
+    buffer.writeTextComponent(zinc::TextComponent());
 
     EXPECT_TRUE(buffer.readString() == "Hello World!");
     EXPECT_TRUE(buffer.readIdentifier() == identifier);
+    EXPECT_TRUE(buffer.readTextComponent() == zinc::TextComponent());
 }
 TEST(ByteBufferTest, WriteReadGameTypes) {
     zinc::ByteBuffer buffer;
@@ -131,6 +133,7 @@ TEST(ByteBufferTest, WriteReadGameTypes) {
     zinc::ChatType chat (zinc::ChatTypeDecoration("hi", {}, zinc::NBTElement()), zinc::ChatTypeDecoration("hello", {}, zinc::NBTElement()));
     buffer.writeNBTElement(element);
     buffer.writeChatType(chat);
+    buffer.writeTextComponent(zinc::TextComponent());
 
     EXPECT_TRUE(buffer.readPosition() == position);
     EXPECT_TRUE(buffer.readAngle() == 0.125f);
@@ -150,6 +153,7 @@ TEST(ByteBufferTest, WriteReadGameTypes) {
     EXPECT_TRUE(buffer.readTeleportFlags() == flags);
     EXPECT_TRUE(buffer.readNBTElement() == element);
     EXPECT_TRUE(buffer.readChatType() == chat);
+    EXPECT_TRUE(buffer.readTextComponent() == zinc::TextComponent());
 }
 
 int main(int argc, char **argv) {

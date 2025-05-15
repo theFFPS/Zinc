@@ -1,7 +1,0 @@
---2025-05-12 22:56:43--  https://sessionserver.mojang.com/session/minecraft/hasJoined?username=40fpsss
-Loaded CA certificate '/etc/ssl/certs/ca-certificates.crt'
-Resolving sessionserver.mojang.com (sessionserver.mojang.com)... 13.107.246.45, 2620:1ec:bdf::45
-Connecting to sessionserver.mojang.com (sessionserver.mojang.com)|13.107.246.45|:443... connected.
-HTTP request sent, awaiting response... 204 No Content
-2025-05-12 22:56:44 (0.00 B/s) - ‘hasJoined?username=40fpsss’ saved [0]
-

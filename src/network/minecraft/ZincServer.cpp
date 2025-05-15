@@ -15,8 +15,14 @@ namespace zinc {
 Logger m_zincLogger = Logger("ZincServer");
 
 ZincServer g_zincServer;
-std::map<std::string, ZincPacket(*)(ByteBuffer&, const ZincConnection::State&)> g_zincServerPluginChannels = {
+std::map<std::string, ZincPacket(*)(ByteBuffer&, ZincConnection*)> g_zincServerPluginChannels = {
     { Identifier("minecraft", "brand").toString(), BrandChannel }
+};
+std::map<std::string, void(*)(std::optional<std::vector<char>>&, ZincConnection*)> g_zincCookieResponseParsers;
+std::map<ZincConnection::State, std::vector<std::string>> g_zincCookieRequests = {
+    { ZincConnection::State::Login, {} },
+    { ZincConnection::State::Config, {} },
+    { ZincConnection::State::Play, {} }
 };
 
 void ZincServer::start() {
@@ -74,6 +80,24 @@ void ZincServer::onAccept(evconnlistener* listener, evutil_socket_t fd, struct s
     bufferevent_setcb(bev, onRead, nullptr, onEvent, ptr);
     bufferevent_enable(bev, EV_READ);
 }
+std::vector<unsigned char> ZincServer::openLoginPluginChannel(const std::string& channel) {
+    std::vector<unsigned char> id = RandomUtil::randomBytes(4);
+    while (isLoginPluginChannelOpened(id)) {
+        id = RandomUtil::randomBytes(4);
+    }
+    m_openedLoginPluginChannels.insert({ id, channel });
+    return id;
+}
+std::string ZincServer::getLoginPluginChannel(const std::vector<unsigned char>& id) {
+    if (!isLoginPluginChannelOpened(id)) return "minecraft:brand";
+    return m_openedLoginPluginChannels[id];
+}
+bool ZincServer::isLoginPluginChannelOpened(const std::vector<unsigned char>& id) {
+    return m_openedLoginPluginChannels.contains(id);
+}
+void ZincServer::closeLoginPluginChannel(const std::vector<unsigned char>& id) {
+    if (isLoginPluginChannelOpened(id)) m_openedLoginPluginChannels.erase(id);
+}
 void ZincServer::onRead(bufferevent* bev, void* ptr) {
     if (!g_zincServer.isConnected(bufferevent_getfd(bev))) return;
     ZincConnection* connection = g_zincServer.getClient(bufferevent_getfd(bev));
@@ -93,6 +117,9 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             connection->m_info.m_networkInfo.m_serverAddr = packet.getData().readString();
             connection->m_info.m_networkInfo.m_serverPort = packet.getData().readNumeric<unsigned short>();
             connection->setState((ZincConnection::State) packet.getData().readVarInt());
+            if (connection->getState() != ZincConnection::State::Status &&
+                connection->getState() != ZincConnection::State::Login &&
+                connection->getState() != ZincConnection::State::Transfer) connection->setState(ZincConnection::State::Status);
         }
         break;
     }
@@ -121,7 +148,7 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
     }
     case ZincConnection::State::Login: {
         switch(packet.getId()) {
-        case 0: {
+        /* LOGIN START */ case 0: {
             if (connection->m_info.m_networkInfo.m_protocolVersion < LATEST_MINECRAFT_VERSION_PROTOCOL) {
                 replyPacket.setId(0);
                 replyPacket.getData().writeString(
@@ -139,7 +166,7 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
                     replyPacket.setId(0);
                     replyPacket.getData().writeString(
                         "[\"\",{\"text\":\"Zinc Login Error\",\"bold\":true,\"color\":\"dark_red\"},{\"text\":\"\n\"},"
-                        "{\"text\":\"Player name can't be longer than 16 characters\",\"color\":\"red\"}]");
+                        "{\"text\":\"Player name can't be int64_ter than 16 characters\",\"color\":\"red\"}]");
                 } else {
                     replyPacket.setId(3);
                     replyPacket.getData().writeVarInt(g_zincConfig.m_threshold);
@@ -157,7 +184,7 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             connection->send(replyPacket);
             break;
         }
-        case 1: {
+        /* ENCRYPTION RESPONSE */ case 1: {
             std::vector<unsigned char> sharedSecret = packet.getData().readPrefixedArray<unsigned char>(&ByteBuffer::readUnsignedByte);
             std::vector<unsigned char> verifyToken = packet.getData().readPrefixedArray<unsigned char>(&ByteBuffer::readUnsignedByte);
             sharedSecret = g_zincServer.getRSA().decrypt(sharedSecret);
@@ -187,6 +214,14 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
                                 property.m_signature = propertyJSON["signature"];
                             connection->m_info.m_playerInfo.m_properties.push_back(property);
                         }
+                        if (g_zincCookieRequests.contains(ZincConnection::State::Login)) 
+                            for (const auto& cookieRequest : g_zincCookieRequests[ZincConnection::State::Login]) {
+                                replyPacket.setId(5);
+                                replyPacket.getData().writeIdentifier(cookieRequest);
+                                connection->send(replyPacket);
+                                replyPacket.setData({});
+                            }
+                        // TODO: request login plugin channels
                     } catch (std::exception e) {
                         replyPacket.setId(0);
                         replyPacket.getData().writeString(
@@ -210,8 +245,28 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             connection->send(replyPacket);
             break;
         }
-        case 3: {
+        /* LOGIN PLUGIN RESPONSE */ case 2: {
+            std::vector<unsigned char> id = packet.getData().readArray<unsigned char>(&ByteBuffer::readUnsignedByte, 4);
+            if (g_zincServer.isLoginPluginChannelOpened(id)) {
+                // TODO: call login plugin channel parser
+                g_zincServer.closeLoginPluginChannel(id);
+            } else {
+                replyPacket.setId(0);
+                replyPacket.getData().writeString(
+                    "[\"\",{\"text\":\"Zinc Login Error\",\"bold\":true,\"color\":\"dark_red\"},{\"text\":\"\n\"},"
+                    "{\"text\":\"Server received invalid login plugin channel id\",\"color\":\"red\"}]");
+                connection->send(replyPacket);
+            }
+            break;
+        }
+        /* LOGIN ACK */ case 3: {
             connection->setState(ZincConnection::State::Config);
+            break;
+        }
+        /* COOKIE RESPONSE */ case 4: {
+            Identifier cookieId = packet.getData().readIdentifier();
+            std::optional<std::vector<char>> bytes = packet.getData().readPrefixedOptional(&ByteBuffer::readPrefixedByteArray);
+            if (g_zincCookieResponseParsers.contains(cookieId.toString())) g_zincCookieResponseParsers[cookieId.toString()](bytes, connection);
             break;
         }
         default: break;
@@ -237,7 +292,7 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             replyPacket.setId(4);
             connection->m_info.m_networkInfo.m_lastKeepAlive = time(nullptr);
             connection->m_info.m_networkInfo.m_verifyToken = RandomUtil::randomBytes(4);
-            replyPacket.getData().writeNumeric<long>(connection->m_info.m_networkInfo.m_lastKeepAlive);
+            replyPacket.getData().writeNumeric<int64_t>(connection->m_info.m_networkInfo.m_lastKeepAlive);
             connection->send(replyPacket);
             replyPacket.setData({});
             replyPacket.setId(5);
@@ -251,7 +306,7 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             break;
         }
         case 2: {
-            connection->send(g_zincServerPluginChannels[packet.getData().readIdentifier().toString()](packet.getData(), connection->getState()));
+            connection->send(g_zincServerPluginChannels[packet.getData().readIdentifier().toString()](packet.getData(), connection));
             break;
         }
         case 3: {
@@ -259,7 +314,7 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             break;
         }
         case 4: {
-            long keepAlive = packet.getData().readNumeric<long>();
+            int64_t keepAlive = packet.getData().readNumeric<int64_t>();
             if (connection->m_info.m_networkInfo.m_lastKeepAlive != keepAlive) {
                 // send error via disconnect 2
             } else connection->m_info.m_networkInfo.m_lastKeepAlive = -1;
