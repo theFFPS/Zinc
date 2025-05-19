@@ -211,7 +211,8 @@ void TextComponent::encode(ByteBuffer& buffer) const {
         case HoverEvent::Action::ShowText: {
             hoverEventElement.m_childElements.push_back(NBTElement::String("action", "show_text"));
             ByteBuffer buffer;
-            hoverEvent.m_value.value_or({TextComponent()})[0].encode(buffer);
+            if (hoverEvent.m_value.has_value()) hoverEvent.m_value.value()[0].encode(buffer);
+            else TextComponent().encode(buffer);
             NBTElement textNBT = buffer.readNBTElement();
             textNBT.m_tag = "value";
             hoverEventElement.m_childElements.push_back(textNBT);
