@@ -2,7 +2,7 @@
 
 namespace zinc {
 
-ZincPacket BrandChannel(ByteBuffer& buffer, ZincConnection* connection) {
+ZincPacket BrandChannel(ByteBuffer&, ZincConnection* connection) {
     ZincPacket packet;
     if (connection->getState() == ZincConnection::State::Login) {
         packet.setId(0);

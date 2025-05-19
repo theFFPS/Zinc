@@ -9,9 +9,11 @@ private:
     int m_id;
     ByteBuffer m_data;
 public: 
-    ZincPacket() : m_id(-1), m_data(ByteBuffer()) {}
-    ZincPacket(const int& id) : m_id(id), m_data(ByteBuffer()) {}
-    ZincPacket(const int& id, const ByteBuffer& data) : m_id(id), m_data(ByteBuffer(data.getBytes(), data.getReadPointer(), data.getIsBigEndian())) {}
+    ZincPacket() : m_id(-1) {}
+    ZincPacket(const int& id) : m_id(id) {}
+    ZincPacket(const int& id, const ByteBuffer& data) : m_id(id) {
+        setData(data);
+    }
 
     int& getId();
     int getId() const;

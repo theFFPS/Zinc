@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <mutex>
 #include <optional>
+#include <type_traits>
+#include <array>
+#include <deque>
 
 #include <util/Logger.h>
 #include <external/UUID.h>
@@ -20,54 +23,120 @@
 #include "TextComponent.h"
 #include "ChatType.h"
 #include "Slot.h"
+#include "Recipe.h"
+#include "GameTypes.h"
+#include "LightData.h"
 #include "nbt/NBTElement.h"
 
 namespace zinc {
 
+struct ConsumeEffectData {
+    std::vector<PotionEffect> m_effects;
+    float m_probability;
+    IDSet m_effectsRemove;
+    float m_diameter;
+    SoundEvent m_sound;
+    std::vector<char> m_customData;
+};
+struct RecipeDisplayData {
+    int m_width;
+    int m_height;
+    std::vector<SlotDisplay> m_ingredients;
+    SlotDisplay m_fuel;
+    SlotDisplay m_result;
+    SlotDisplay m_craftingStation;
+    int m_cookingTime;
+    float m_experience;
+    std::vector<char> m_customData;
+};
+struct SlotDisplayData {
+    int m_itemType;
+    Slot m_itemStack;
+    Identifier m_tag;
+    std::vector<SlotDisplay> m_children;
+    std::vector<char> m_customData;
+};
 struct ByteBuffer {
-private:
-    std::vector<char> m_bytes;
-    size_t m_readPtr;
-
     Logger m_logger = Logger("ByteBuffer");
-    std::mutex m_mutex;
+    struct InternalByteBuffer {
+    public:
+        static constexpr size_t BLOCK_SIZE = 4096;
+    private:
+        Logger m_logger = Logger("InternalByteBuffer");
+        std::deque<std::vector<char>> m_blocks;
+        size_t m_writeBlock = 0, m_writeOffset = 0;
+        size_t m_readBlock = 0, m_readOffset = 0;
+        std::mutex m_mutex;
 
-    constexpr static const int SEGMENT_BITS = 0x7F;
-    constexpr static const int CONTINUE_BIT = 0x80;
+        bool m_enableBlockRecycle = false;
+    public:
+        InternalByteBuffer();
+        ~InternalByteBuffer();
 
+        void clear() noexcept;
+
+        void write(const char* data, const size_t& length);
+        std::vector<char> read(const size_t& length);
+
+        bool& areBlocksRecycled();
+        bool areBlocksRecycled() const;
+        std::pair<size_t, size_t> getReader() const;
+        std::pair<size_t, size_t> getWriter() const;
+
+        void toggleBlockRecycle(const bool& state);
+        void setReader(const std::pair<size_t, size_t>& reader);
+        void setWriter(const std::pair<size_t, size_t>& writer);
+
+        std::vector<char> getBytes() const;
+
+        bool operator==(const InternalByteBuffer& buffer) const;
+        bool operator!=(const InternalByteBuffer& buffer) const;
+    } m_internalBuffer;
     bool m_isBigEndian;
-public:
-    ByteBuffer() : m_bytes({}), m_readPtr(0), m_isBigEndian(true) {}
-    ByteBuffer(const bool& isBigEndian) : m_bytes({}), m_readPtr(0), m_isBigEndian(isBigEndian) {}
-    ByteBuffer(const std::vector<char>& bytes, const size_t& readPtr = 0) : m_bytes(bytes), m_readPtr(readPtr), m_isBigEndian(true) {}
-    ByteBuffer(const std::vector<char>& bytes, const size_t& readPtr, const bool& isBigEndian) : m_bytes(bytes), m_readPtr(readPtr), m_isBigEndian(isBigEndian) {}
-    ByteBuffer(ByteBuffer&& buffer) : m_bytes(buffer.getBytes()), m_readPtr(buffer.getReadPointer()), m_isBigEndian(buffer.getIsBigEndian()) {}
 
-    std::vector<char>& getBytes();
+    ByteBuffer() : m_isBigEndian(true) {}
+    ByteBuffer(const bool& isBigEndian) : m_isBigEndian(isBigEndian) {}
+    ByteBuffer(const std::vector<char>& bytes, const size_t& readPtr = 0) : m_isBigEndian(true) {
+        size_t readBlock = (readPtr / InternalByteBuffer::BLOCK_SIZE);
+        size_t readOffset = (readPtr % InternalByteBuffer::BLOCK_SIZE);
+        m_internalBuffer.write(bytes.data(), bytes.size());
+        m_internalBuffer.setReader(std::make_pair(readBlock, readOffset));
+    }
+    ByteBuffer(const std::vector<char>& bytes, const size_t& readPtr, const bool& isBigEndian) : m_isBigEndian(isBigEndian) {
+        size_t readBlock = (readPtr / InternalByteBuffer::BLOCK_SIZE);
+        size_t readOffset = (readPtr % InternalByteBuffer::BLOCK_SIZE);
+        m_internalBuffer.write(bytes.data(), bytes.size());
+        m_internalBuffer.setReader(std::make_pair(readBlock, readOffset));
+    }
+    ByteBuffer(ByteBuffer&& buffer) : m_isBigEndian(buffer.m_isBigEndian) {
+        std::vector<char> bytes = buffer.m_internalBuffer.getBytes();
+        m_internalBuffer.write(bytes.data(), bytes.size());
+        m_internalBuffer.setReader(buffer.m_internalBuffer.getReader());
+    }
+
+    void clear() noexcept;
+
     std::vector<char> getBytes() const;
-    size_t& getReadPointer();
-    size_t getReadPointer() const;
-    bool& getIsBigEndian();
-    bool getIsBigEndian() const;
-    void setReadPointer(size_t readPtr);
-    void setBytes(const std::vector<char>& bytes);
-    void setIsBigEndian(const bool& isBigEndian);
-    void clear();
-    char *data();
-    const char *data() const;
     size_t size() const;
+    size_t getReaderPointer() const;
 
     void writeBytes(const std::vector<char>& bytes);
     std::vector<char> readBytes(const size_t& length);
 
-    template<typename T> void writeNumeric(const T& value) {
-        std::vector<char> bytes (sizeof(T));
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> void writeNumeric(const T& value) {
+        if constexpr (std::is_same_v<T, bool>) { writeByte(value ? 1 : 0); return; }
+        if constexpr (std::is_same_v<T, char>) { writeByte(value); return; }
+        if constexpr (std::is_same_v<T, unsigned char>) { writeUnsignedByte(value); return; }
+        std::array<char, sizeof(T)> bytes;
         std::copy((char*)&value, ((char*)&value) + sizeof(T), bytes.begin());
         if (m_isBigEndian) std::reverse(bytes.begin(), bytes.end());
-        writeBytes(bytes);
+        m_internalBuffer.write(bytes.data(), bytes.size());
     }
-    template<typename T> T readNumeric() {
-        T result;
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> T readNumeric() {
+        if constexpr (std::is_same_v<T, bool>) return readByte();
+        if constexpr (std::is_same_v<T, char>) return readByte();
+        if constexpr (std::is_same_v<T, unsigned char>) return readUnsignedByte();
+        T result = 0;
         std::vector<char> bytes = readBytes(sizeof(T));
         if (m_isBigEndian) std::reverse(bytes.begin(), bytes.end());
         std::copy(bytes.begin(), bytes.end(), (char*)&result);
@@ -79,19 +148,74 @@ public:
     void writeUnsignedByte(const unsigned char& c);
     unsigned char readUnsignedByte();
 
-    size_t getVarIntLength(const int& value);
-    size_t getVarLongLength(const long& value);
-    void writeVarInt(const int& value);
-    void writeVarLong(const long& value);
-    int readVarInt();
-    long readVarLong();
-
-    size_t getZigZagVarIntLength(const int& value);
-    size_t getZigZagVarLongLength(const long& value);
-    void writeZigZagVarInt(const int& value);
-    void writeZigZagVarLong(const long& value);
-    int readZigZagVarInt();
-    long readZigZagVarLong();
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> static constexpr size_t varNumericMaxSize() noexcept { 
+        return sizeof(T) * 8 / 7 + 1;
+    }
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> static size_t getVarNumericLength(const T& value) {
+        size_t count = 0;
+        using UnsignedT = std::make_unsigned_t<T>;
+        UnsignedT uv = static_cast<UnsignedT>(value);
+        do {
+            count++;
+            uv >>= 7;
+        } while (uv);
+        return count;
+    }
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> void writeVarNumeric(const T& value) {
+        std::array<uint8_t, varNumericMaxSize<T>()> temp;
+        size_t count = 0;
+        using UnsignedT = std::make_unsigned_t<T>;
+        UnsignedT uv = static_cast<UnsignedT>(value);
+        do {
+            temp[count++] = (uv & 0x7F) | 0x80;
+            uv >>= 7;
+        } while (uv);
+        temp[count-1] &= 0x7F;
+        m_internalBuffer.write((const char*) temp.data(), count);
+    }
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> T readVarNumeric() {
+        using UnsignedT = std::make_unsigned_t<T>;
+        UnsignedT result = 0;
+        int shift = 0;
+        std::vector<char> readByte;
+        const auto maxBytes = varNumericMaxSize<T>();
+        for (size_t i = 0; i < maxBytes; ++i) {
+            readByte = m_internalBuffer.read(1);
+            const uint8_t byte = readByte[0];
+            result |= static_cast<UnsignedT>(byte & 0x7F) << shift;
+            if (!(byte & 0x80)) {
+                if constexpr (std::is_signed_v<T>) {
+                    constexpr auto signBit = static_cast<UnsignedT>(1) << (sizeof(T) * 8 - 1);
+                    if (result & signBit) {
+                        result |= static_cast<UnsignedT>(~0) << (sizeof(T) * 8 - 1);
+                    }
+                }
+                return static_cast<T>(result);
+            }
+            shift += 7;
+            if (shift >= (int)(sizeof(T) * 8)) {
+                m_logger.error("VarInt overflow");
+                return 0;
+            }
+        }
+        m_logger.error("Malformed VarInt");
+        return 0;
+    }
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> static size_t getZigZagVarNumericLength(const T& value) {
+        using UnsignedT = std::make_unsigned_t<T>;
+        auto transformed = static_cast<UnsignedT>((value << 1) ^ (value >> (sizeof(T) * 8 - 1)));
+        return getVarNumericLength<UnsignedT>(transformed);
+    }
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> void writeZigZagVarNumeric(const T& value) {
+        using UnsignedT = std::make_unsigned_t<T>;
+        auto transformed = static_cast<UnsignedT>((value << 1) ^ (value >> (sizeof(T) * 8 - 1)));
+        writeVarNumeric<UnsignedT>(transformed);
+    }
+    template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> T readZigZagVarNumeric() {
+        using UnsignedT = std::make_unsigned_t<T>;
+        UnsignedT uv = readVarNumeric<UnsignedT>();
+        return static_cast<T>((uv >> 1) ^ (-(uv & 1)));
+    }
 
     void writeString(const std::string& value);
     std::string readString();
@@ -119,7 +243,7 @@ public:
         if (value.has_value()) (this->*func)(value.value());
     }
     template<typename T> void writePrefixedOptional(const std::optional<T>& value, void(*func)(const T&, ByteBuffer&)) {
-        writewriteByte(value.has_value());
+        writeByte(value.has_value());
         if (value.has_value()) func(value.value(), *this);
     }
     template<typename T> std::optional<T> readOptional(T(ByteBuffer::*func)(), bool hasValue) {
@@ -146,11 +270,11 @@ public:
         for (const T& element : value) func(element, *this);
     }
     template<typename T> void writePrefixedArray(const std::vector<T>& value, void(ByteBuffer::*func)(const T&)) {
-        writeVarInt(value.size());
+        writeVarNumeric<int>(value.size());
         writeArray(value, func);
     }
     template<typename T> void writePrefixedArray(const std::vector<T>& value, void(*func)(const T&, ByteBuffer&)) {
-        writeVarInt(value.size());
+        writeVarNumeric<int>(value.size());
         writeArray(value, func);
     }
     template<typename T> std::vector<T> readArray(T(ByteBuffer::*func)(), size_t length) {
@@ -164,10 +288,10 @@ public:
         return result;
     }
     template<typename T> std::vector<T> readPrefixedArray(T(ByteBuffer::*func)()) {
-        return readArray(func, readVarInt());
+        return readArray(func, readVarNumeric<int>());
     }
     template<typename T> std::vector<T> readPrefixedArray(T(func)(ByteBuffer&)) {
-        return readArray(func, readVarInt());
+        return readArray(func, readVarNumeric<int>());
     }
 
     void writeByteArray(const std::vector<char>& bytes);
@@ -176,22 +300,22 @@ public:
     std::vector<char> readPrefixedByteArray();
 
     template<typename T> void writeIDorX(const IDorX<T>& value, void(*func)(const T&, ByteBuffer&)) {
-        writeVarInt(value.getId());
+        writeVarNumeric<int>(value.getId());
         if (!value.getId()) func(value.getValue());
     }
     template<typename T> void writeIDorX(const IDorX<T>& value, void(ByteBuffer::*func)(const T&)) {
-        writeVarInt(value.getId());
+        writeVarNumeric<int>(value.getId());
         if (!value.getId()) (this->*func)(value.getValue());
     }
     template<typename T> IDorX<T> readIDorX(T(func)(ByteBuffer&)) {
         IDorX<T> result;
-        result.setId(readVarInt());
+        result.setId(readVarNumeric<int>());
         if (!result.getId()) result.setValue(func(*this));
         return result;
     }
     template<typename T> IDorX<T> readIDorX(T(ByteBuffer::*func)()) {
         IDorX<T> result;
-        result.setId(readVarInt());
+        result.setId(readVarNumeric<int>());
         if (!result.getId()) result.setValue((this->*func)());
         return result;
     }
@@ -217,14 +341,14 @@ public:
     void writeFixedBitSet(const BitSet& bitSet);
     BitSet readFixedBitSet(const size_t& length);
 
-    template<typename T> void writeEnumSet(const std::vector<T>& enumSet) {
+    template<typename T, typename = std::enable_if_t<std::is_enum_v<T>>> void writeEnumSet(const std::vector<T>& enumSet) {
         BitSet bitSet;
         for (const T& value : enumSet) {
             bitSet.set((unsigned long) value);
         }
         writeFixedBitSet(bitSet);
     }
-    template<typename T> std::vector<T> readEnumSet(const size_t& length) {
+    template<typename T, typename = std::enable_if_t<std::is_enum_v<T>>> std::vector<T> readEnumSet(const size_t& length) {
         BitSet bitSet = readFixedBitSet(length);
         std::vector<T> result;
         for (size_t i = 0; i < (length * 8); i++) {
@@ -247,6 +371,48 @@ public:
 
     void writeSlot(const Slot& slot);
     void writeHashedSlot(const Slot& slot);
+
+    void writeSlotDisplay(const SlotDisplay& display);
+    SlotDisplay readSlotDisplay();
+
+    void writeRecipeDisplay(const RecipeDisplay& display);
+    RecipeDisplay readRecipeDisplay();
+
+    void writePartialDataComponentMatcher(const PartialDataComponentMatcher& component);
+    PartialDataComponentMatcher readPartialDataComponentMatcher();
+
+    void writeProperty(const Property& property);
+    Property readProperty();
+
+    void writeFireworkExplosion(const FireworkExplosion& fireworkExplosion);
+    FireworkExplosion readFireworkExplosion();
+
+    void writePotionEffectDetail(const PotionEffectDetail& detail);
+    PotionEffectDetail readPotionEffectDetail();
+
+    void writePotionEffect(const PotionEffect& effect);
+    PotionEffect readPotionEffect();
+
+    void writeTrimMaterial(const TrimMaterial& material);
+    TrimMaterial readTrimMaterial();
+
+    void writeTrimPattern(const TrimPattern& pattern);
+    TrimPattern readTrimPattern();
+
+    void writeConsumeEffect(const ConsumeEffect& effect);
+    ConsumeEffect readConsumeEffect();
+
+    void writeInstrument(const Instrument& instrument);
+    Instrument readInstrument();
+
+    void writeJukeBox(const JukeBox& jukeBox);
+    JukeBox readJukeBox();
+
+    void writeBlockPredicate(const BlockPredicate& predicate);
+    BlockPredicate readBlockPredicate();
+
+    void writeLightData(const LightData& data);
+    LightData readLightData();
 
     bool operator==(const ByteBuffer& buffer) const;
     bool operator!=(const ByteBuffer& buffer) const;

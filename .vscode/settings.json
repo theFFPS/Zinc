@@ -101,6 +101,7 @@
         "cfenv": "cpp",
         "__string": "cpp",
         "coroutine": "cpp",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "target": "cpp"
     }
 }

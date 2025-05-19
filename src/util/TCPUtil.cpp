@@ -17,7 +17,7 @@ ByteBuffer TCPUtil::read(bufferevent* bev) {
     return buffer;
 }
 void TCPUtil::send(bufferevent* bev, const ByteBuffer& buffer) {
-    bufferevent_write(bev, buffer.data(), buffer.size());
+    bufferevent_write(bev, buffer.getBytes().data(), buffer.size());
 }
 void TCPUtil::drain(bufferevent* bev, const size_t& length) {
     evbuffer* input = bufferevent_get_input(bev);

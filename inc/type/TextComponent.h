@@ -36,6 +36,7 @@ extern const std::string LEGACY_FORMAT_RESET;
 
 struct TextComponent {
 public:
+    bool m_simpleString = false;
     enum class Type { Text, Translatable, Score, Selector, Keybind, NBT, Undefined };
     struct Content {
         std::string m_text; // Text

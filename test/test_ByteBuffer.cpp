@@ -14,10 +14,10 @@ TEST(ByteBufferTest, WriteReadNumeric) {
     buffer.writeNumeric<unsigned long>(1);
     buffer.writeNumeric<float>(1.3f);
     buffer.writeNumeric<double>(1.6);
-    buffer.writeVarInt(20);
-    buffer.writeVarLong(40);
-    buffer.writeZigZagVarInt(20);
-    buffer.writeZigZagVarLong(40);
+    buffer.writeVarNumeric<int>(20);
+    buffer.writeVarNumeric<long>(-40);
+    buffer.writeZigZagVarNumeric<int>(20);
+    buffer.writeZigZagVarNumeric<long>(-40);
 
     EXPECT_TRUE(buffer.readByte() == 1);
     EXPECT_TRUE(buffer.readUnsignedByte() == 1);
@@ -29,14 +29,14 @@ TEST(ByteBufferTest, WriteReadNumeric) {
     EXPECT_TRUE(buffer.readNumeric<unsigned long>() == 1);
     EXPECT_TRUE(buffer.readNumeric<float>() == 1.3f);
     EXPECT_TRUE(buffer.readNumeric<double>() == 1.6);
-    EXPECT_TRUE(buffer.readVarInt() == 20);
-    EXPECT_TRUE(buffer.readVarLong() == 40);
-    EXPECT_TRUE(buffer.readZigZagVarInt() == 20);
-    EXPECT_TRUE(buffer.readZigZagVarLong() == 40);
+    EXPECT_TRUE(buffer.readVarNumeric<int>() == 20);
+    EXPECT_TRUE(buffer.readVarNumeric<long>() == -40);
+    EXPECT_TRUE(buffer.readZigZagVarNumeric<int>() == 20);
+    EXPECT_TRUE(buffer.readZigZagVarNumeric<long>() == -40);
 }
 TEST(ByteBufferTest, WriteReadLENumeric) {
     zinc::ByteBuffer buffer;
-    buffer.setIsBigEndian(false);
+    buffer.m_isBigEndian = false;
     
     buffer.writeByte(1);
     buffer.writeUnsignedByte(1);
@@ -48,10 +48,10 @@ TEST(ByteBufferTest, WriteReadLENumeric) {
     buffer.writeNumeric<unsigned long>(1);
     buffer.writeNumeric<float>(1.3f);
     buffer.writeNumeric<double>(1.6);
-    buffer.writeVarInt(20);
-    buffer.writeVarLong(40);
-    buffer.writeZigZagVarInt(20);
-    buffer.writeZigZagVarLong(40);
+    buffer.writeVarNumeric<int>(20);
+    buffer.writeVarNumeric<long>(-40);
+    buffer.writeZigZagVarNumeric<int>(20);
+    buffer.writeZigZagVarNumeric<long>(-40);
 
     EXPECT_TRUE(buffer.readByte() == 1);
     EXPECT_TRUE(buffer.readUnsignedByte() == 1);
@@ -63,10 +63,10 @@ TEST(ByteBufferTest, WriteReadLENumeric) {
     EXPECT_TRUE(buffer.readNumeric<unsigned long>() == 1);
     EXPECT_TRUE(buffer.readNumeric<float>() == 1.3f);
     EXPECT_TRUE(buffer.readNumeric<double>() == 1.6);
-    EXPECT_TRUE(buffer.readVarInt() == 20);
-    EXPECT_TRUE(buffer.readVarLong() == 40);
-    EXPECT_TRUE(buffer.readZigZagVarInt() == 20);
-    EXPECT_TRUE(buffer.readZigZagVarLong() == 40);
+    EXPECT_TRUE(buffer.readVarNumeric<int>() == 20);
+    EXPECT_TRUE(buffer.readVarNumeric<long>() == -40);
+    EXPECT_TRUE(buffer.readZigZagVarNumeric<int>() == 20);
+    EXPECT_TRUE(buffer.readZigZagVarNumeric<long>() == -40);
 }
 TEST(ByteBufferTest, WriteReadStrings) {
     zinc::ByteBuffer buffer;
@@ -90,7 +90,7 @@ TEST(ByteBufferTest, WriteReadGameTypes) {
     buffer.writeUUID(UUID);
     buffer.writePrefixedOptional<std::string>("Hi!", &zinc::ByteBuffer::writeString);
     buffer.writePrefixedOptional<std::string>(std::optional<std::string>(), &zinc::ByteBuffer::writeString);
-    buffer.writePrefixedArray<int>({1,2,3}, &zinc::ByteBuffer::writeVarInt);
+    buffer.writePrefixedArray<int>({1,2,3}, &zinc::ByteBuffer::writeVarNumeric<int>);
     buffer.writePrefixedByteArray({1,2,3,4,5});
     buffer.writeIDorX<std::string>(zinc::IDorX<std::string>("Hello"), &zinc::ByteBuffer::writeString);
     buffer.writeIDorX<std::string>(zinc::IDorX<std::string>(123), &zinc::ByteBuffer::writeString);
@@ -140,7 +140,7 @@ TEST(ByteBufferTest, WriteReadGameTypes) {
     EXPECT_TRUE(buffer.readUUID() == UUID);
     EXPECT_TRUE(buffer.readPrefixedOptional<std::string>(&zinc::ByteBuffer::readString).value_or("") == "Hi!");
     EXPECT_TRUE(!buffer.readPrefixedOptional<std::string>(&zinc::ByteBuffer::readString).has_value());
-    EXPECT_TRUE(buffer.readPrefixedArray<int>(&zinc::ByteBuffer::readVarInt) == std::vector<int>({1,2,3}));
+    EXPECT_TRUE(buffer.readPrefixedArray<int>(&zinc::ByteBuffer::readVarNumeric<int>) == std::vector<int>({1,2,3}));
     EXPECT_TRUE(buffer.readPrefixedByteArray() == std::vector<char>({1,2,3,4,5}));
     EXPECT_TRUE(buffer.readIDorX<std::string>(&zinc::ByteBuffer::readString).getValue() == "Hello");
     EXPECT_TRUE(buffer.readIDorX<std::string>(&zinc::ByteBuffer::readString).getId() == 123);

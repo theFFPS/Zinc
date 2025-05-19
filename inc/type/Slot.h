@@ -10,6 +10,9 @@ struct ComponentWrapper {
 
     ComponentWrapper() : m_type(0) {}
     ComponentWrapper(const int& type, const std::vector<char>& dataAndType) : m_type(type), m_dataAndType(dataAndType) {}
+
+    bool operator==(const ComponentWrapper& component) const;
+    bool operator!=(const ComponentWrapper& component) const;
 };
 struct Slot {
     int m_itemId;
@@ -23,6 +26,9 @@ struct Slot {
     
     std::vector<char> toBytes() const;
     std::vector<char> toBytesHashed() const;
+
+    bool operator==(const Slot& slot) const;
+    bool operator!=(const Slot& slot) const;
 };
 
 }

@@ -10,9 +10,6 @@
 
 namespace zinc {
 
-enum class DyeColor : int {
-    While, Orange, Magenta, LightBlue, Yellow, Lime, Pink, Gray, LightGray, Cyan, Purple, Blue, Brown, Green, Red, Black
-};
 using ExactDataComponentMatcher = std::vector<char>;
 struct PartialDataComponentMatcher {
     int m_type;
@@ -22,6 +19,9 @@ struct PartialDataComponentMatcher {
     PartialDataComponentMatcher(const int& type, const NBTElement& predicate) : m_type(type), m_predicate(predicate) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const PartialDataComponentMatcher& component) const;
+    bool operator!=(const PartialDataComponentMatcher& component) const;
 };
 struct Property {
     std::string m_name;
@@ -34,21 +34,26 @@ struct Property {
         : m_name(name), m_isExact(true), m_minValue(minValue), m_maxValue(maxValue) {}
     
     std::vector<char> toBytes() const;
+
+    bool operator==(const Property& property) const;
+    bool operator!=(const Property& property) const;
 };
-enum class FireworkExplosionShape : int { Small, Large, Star, Creeper, Burst };
 struct FireworkExplosion {
-    FireworkExplosionShape m_shape;
+    Identifier m_shape;
     std::vector<int> m_colors;
     std::vector<int> m_fadeColors;
     bool m_hasTrail;
     bool m_hasTwinkle;
 
     FireworkExplosion() : m_hasTrail(false), m_hasTwinkle(false) {}
-    FireworkExplosion(const FireworkExplosionShape& shape, const std::vector<int>& colors, const std::vector<int>& fadeColors,
+    FireworkExplosion(const Identifier& shape, const std::vector<int>& colors, const std::vector<int>& fadeColors,
                       const bool& hasTrail, const bool& hasTwinkle) 
         : m_shape(shape), m_colors(colors), m_fadeColors(fadeColors), m_hasTrail(hasTrail), m_hasTwinkle(hasTwinkle) {}
     
     std::vector<char> toBytes() const;
+
+    bool operator==(const FireworkExplosion& fireworkExplosion) const;
+    bool operator!=(const FireworkExplosion& fireworkExplosion) const;
 };
 struct PotionEffectDetail {
     int m_amplifier;
@@ -67,6 +72,9 @@ struct PotionEffectDetail {
             m_hiddenEffect(hiddenEffect) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const PotionEffectDetail& detail) const;
+    bool operator!=(const PotionEffectDetail& detail) const;
 };
 struct PotionEffect {
     int m_type;
@@ -76,6 +84,9 @@ struct PotionEffect {
     PotionEffect(const int& type, const PotionEffectDetail& detail) : m_type(type), m_detail(detail) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const PotionEffect& effect) const;
+    bool operator!=(const PotionEffect& effect) const;
 };
 struct TrimMaterial {
     std::string m_suffix;
@@ -87,6 +98,9 @@ struct TrimMaterial {
         : m_suffix(suffix), m_overrides(overrides), m_description(description) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const TrimMaterial& material) const;
+    bool operator!=(const TrimMaterial& material) const;
 };
 struct TrimPattern {
     std::string m_asset;
@@ -99,24 +113,31 @@ struct TrimPattern {
         : m_asset(asset), m_templateItem(templateItem), m_description(description), m_decal(decal) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const TrimPattern& pattern) const;
+    bool operator!=(const TrimPattern& pattern) const;
 };
-enum class ConsumeEffectType : int { ApplyEffects, RemoveEffects, ClearEffects, TeleportRandomly, PlaySound };
 struct ConsumeEffect {
-    ConsumeEffectType m_type;
+    Identifier m_type;
     std::vector<PotionEffect> m_effects;
     float m_probability;
     IDSet m_effectsRemove;
     float m_diameter;
     SoundEvent m_sound;
+    std::vector<char> m_customData;
 
-    ConsumeEffect() : m_type(ConsumeEffectType::ClearEffects) {}
+    ConsumeEffect() : m_type("minecraft:clear_effects") {}
     ConsumeEffect(const std::vector<PotionEffect>& effects, const float& probability) 
-        : m_type(ConsumeEffectType::ApplyEffects), m_effects(effects), m_probability(probability) {}
-    ConsumeEffect(const IDSet& effects) : m_type(ConsumeEffectType::RemoveEffects), m_effectsRemove(effects) {}
-    ConsumeEffect(const float& diameter) : m_type(ConsumeEffectType::TeleportRandomly), m_diameter(diameter) {}
-    ConsumeEffect(const SoundEvent& sound) : m_type(ConsumeEffectType::PlaySound), m_sound(sound) {}
+        : m_type("minecraft:apply_effects"), m_effects(effects), m_probability(probability) {}
+    ConsumeEffect(const IDSet& effects) : m_type("minecraft:remove_effects"), m_effectsRemove(effects) {}
+    ConsumeEffect(const float& diameter) : m_type("minecraft:teleport_randomly"), m_diameter(diameter) {}
+    ConsumeEffect(const SoundEvent& sound) : m_type("minecraft:play_sound"), m_sound(sound) {}
+    ConsumeEffect(const std::string& type, const std::vector<char>& data) : m_type(type), m_customData(data) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const ConsumeEffect& effect) const;
+    bool operator!=(const ConsumeEffect& effect) const;
 };
 struct Instrument {
     IDorX<SoundEvent> m_soundEvent;
@@ -129,6 +150,9 @@ struct Instrument {
         : m_soundEvent(soundEvent), m_soundRange(soundRange), m_range(range), m_description(description) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const Instrument& instrument) const;
+    bool operator!=(const Instrument& instrument) const;
 };
 struct JukeBox {
     IDorX<SoundEvent> m_soundEvent;
@@ -141,6 +165,9 @@ struct JukeBox {
         : m_soundEvent(soundEvent), m_description(description), m_duration(duration), m_output(output) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const JukeBox& jukeBox) const;
+    bool operator!=(const JukeBox& jukeBox) const;
 };
 struct BlockPredicate {
     std::optional<IDSet> m_blocks;
@@ -155,6 +182,9 @@ struct BlockPredicate {
         : m_blocks(blocks), m_properties(properties), m_NBT(NBT), m_dataComponents(dataComponents), m_partialDataComponents(partialDataComponents) {}
 
     std::vector<char> toBytes() const;
+
+    bool operator==(const BlockPredicate& predicate) const;
+    bool operator!=(const BlockPredicate& predicate) const;
 };
 
 }

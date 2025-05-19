@@ -1,51 +1,52 @@
 #include <util/crypto/Base64.h>
 #include <util/Logger.h>
-#include <openssl/bio.h>
-#include <openssl/buffer.h>
 #include <openssl/evp.h>
 
 namespace zinc {
 
-std::string Base64::encode(const std::vector<unsigned char>& data) {
-    BIO* bio = BIO_new(BIO_s_mem());
-    BIO* b64 = BIO_new(BIO_f_base64());
-    BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-    BIO_push(b64, bio);
-
-    BIO_write(b64, data.data(), data.size());
-    BIO_flush(b64);
-
-    BUF_MEM* bufferPtr;
-    BIO_get_mem_ptr(bio, &bufferPtr);
-
-    std::string encoded(bufferPtr->data, bufferPtr->length);
-    BIO_free_all(b64);
-
-    return encoded;
+constexpr size_t calculateEncodedSize(size_t input_len) noexcept { return 4 * ((input_len + 2) / 3); }
+size_t calculatePadding(const std::string& encoded) noexcept {
+    size_t padding = 0;
+    if (!encoded.empty()) {
+        if (encoded[encoded.size()-1] == '=') padding++;
+        if (encoded.size() > 1 && encoded[encoded.size()-2] == '=') padding++;
+    }
+    return padding;
 }
-std::string Base64::encode(const std::vector<char>& data) {
-    return encode(std::vector<unsigned char>(data.begin(), data.end()));
-}
-std::string Base64::encode(const std::string& data) {
-    return encode(std::vector<unsigned char>(data.begin(), data.end()));
-}
-std::vector<unsigned char> Base64::decode(const std::string& encodedData) {
-    BIO* bio = BIO_new_mem_buf((void*)encodedData.c_str(), encodedData.size());
-    BIO* b64 = BIO_new(BIO_f_base64());
-    BIO_set_flags(b64, BIO_FLAGS_BASE64_NO_NL);
-    BIO_push(b64, bio);
 
-    std::vector<unsigned char> decoded(encodedData.size());
-    int decodedSize = BIO_read(b64, decoded.data(), encodedData.size());
-    BIO_free_all(b64);
+template<typename Container> std::string Base64::encode(const Container& data) {
+    const auto* byteData = reinterpret_cast<const unsigned char*>(data.data());
+    const size_t dataSize = data.size();
+    if (!dataSize) return "";
+    const size_t encodedSize = calculateEncodedSize(dataSize);
+    std::string result(encodedSize, 0);
+    const int outputLen = EVP_EncodeBlock( reinterpret_cast<unsigned char*>(result.data()), byteData, static_cast<int>(dataSize));
+    if (outputLen <= 0 || static_cast<size_t>(outputLen) != encodedSize) {
+        Logger("Base64").error("Encoding failed");
+        return "";
+    }
+    return result;
+}
 
-    if (decodedSize <= 0) {
-        Logger("Base64").error("Base64 decoding failed");
+template std::string Base64::encode<std::vector<unsigned char>>(const std::vector<unsigned char>&);
+template std::string Base64::encode<std::vector<char>>(const std::vector<char>&);
+template std::string Base64::encode<std::string>(const std::string&);
+
+std::vector<unsigned char> Base64::decode(const std::string& encoded) {
+    if (encoded.empty()) return {};
+    if (encoded.size() % 4 != 0) {
+        Logger("Base64").error("Invalid base64 length");
         return {};
     }
-
-    decoded.resize(decodedSize);
-    return decoded;
+    const size_t padding = calculatePadding(encoded);
+    const size_t maxDecodedSize = (encoded.size() / 4) * 3 - padding;
+    std::vector<unsigned char> result(maxDecodedSize);
+    const int outputLen = EVP_DecodeBlock(result.data(), reinterpret_cast<const unsigned char*>(encoded.data()), static_cast<int>(encoded.size()));
+    if (outputLen < 0 || static_cast<size_t>(outputLen) != maxDecodedSize) {
+        Logger("Base64").error("Decoding failed");
+        return {};
+    }
+    return result;
 }
 
 }

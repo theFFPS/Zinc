@@ -37,13 +37,13 @@ public:
 
     inline ByteBuffer encode() {
         ByteBuffer buffer;
-        buffer.writeVarInt((int) ComponentTypes::CustomData);
+        buffer.writeVarNumeric<int>((int) ComponentTypes::CustomData);
         buffer.writeNBTElement(m_data);
         return buffer;
     }
     inline NBTElement toNBT() {
         NBTElement result = m_data;
-        result.setTag("minecraft:custom_data");
+        result.m_tag = "minecraft:custom_data";
         return result;
     }
 };
@@ -56,8 +56,8 @@ public:
 
     inline ByteBuffer encode() {
         ByteBuffer buffer;
-        buffer.writeVarInt((int) ComponentTypes::MaxStackSize);
-        buffer.writeVarInt(m_maxStackSize);
+        buffer.writeVarNumeric<int>((int) ComponentTypes::MaxStackSize);
+        buffer.writeVarNumeric<int>(m_maxStackSize);
         return buffer;
     }
 };
@@ -70,8 +70,8 @@ public:
 
     inline ByteBuffer encode() {
         ByteBuffer buffer;
-        buffer.writeVarInt((int) ComponentTypes::MaxDamage);
-        buffer.writeVarInt(m_maxDamage);
+        buffer.writeVarNumeric<int>((int) ComponentTypes::MaxDamage);
+        buffer.writeVarNumeric<int>(m_maxDamage);
         return buffer;
     }
 };
@@ -84,15 +84,15 @@ public:
 
     inline ByteBuffer encode() {
         ByteBuffer buffer;
-        buffer.writeVarInt((int) ComponentTypes::Damage);
-        buffer.writeVarInt(m_damage);
+        buffer.writeVarNumeric<int>((int) ComponentTypes::Damage);
+        buffer.writeVarNumeric<int>(m_damage);
         return buffer;
     }
 };
 struct UnbreakableComponent {
     inline ByteBuffer encode() {
         ByteBuffer buffer;
-        buffer.writeVarInt((int) ComponentTypes::Unbreakable);
+        buffer.writeVarNumeric<int>((int) ComponentTypes::Unbreakable);
         return buffer;
     }
 };
@@ -105,7 +105,7 @@ public:
 
     inline ByteBuffer encode() {
         ByteBuffer buffer;
-        buffer.writeVarInt((int) ComponentTypes::CustomName);
+        buffer.writeVarNumeric<int>((int) ComponentTypes::CustomName);
         buffer.writeTextComponent(m_name);
         return buffer;
     }
@@ -119,7 +119,7 @@ public:
 
     inline ByteBuffer encode() {
         ByteBuffer buffer;
-        buffer.writeVarInt((int) ComponentTypes::ItemName);
+        buffer.writeVarNumeric<int>((int) ComponentTypes::ItemName);
         buffer.writeTextComponent(m_name);
         return buffer;
     }
@@ -133,7 +133,7 @@ public:
 
     inline ByteBuffer encode() {
         ByteBuffer buffer;
-        buffer.writeVarInt((int) ComponentTypes::ItemModel);
+        buffer.writeVarNumeric<int>((int) ComponentTypes::ItemModel);
         buffer.writeIdentifier(m_model);
         return buffer;
     }

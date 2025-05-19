@@ -62,56 +62,56 @@ ZincPacket ZincConnection::read() {
             &ByteBuffer::writeUnsignedByte
         );
     } else {
-        buffer.setBytes(tmpBuffer.getBytes());
+        buffer.m_internalBuffer.write(tmpBuffer.getBytes().data(), tmpBuffer.size());
     }
     tmpBuffer.clear();
-    size_t length = buffer.readVarInt();
+    size_t length = buffer.readVarNumeric<int>();
     int packetId = -1;
     ByteBuffer dataBuffer;
     if (length > buffer.size()) {
         return ZincPacket(-1); // wait for more data
-    } else TCPUtil::drain(m_tcpConnection.getBuffer(), buffer.getVarIntLength(length) + length);
+    } else TCPUtil::drain(m_tcpConnection.getBuffer(), buffer.getVarNumericLength<int>(length) + length);
     if (m_isCompressed) {
-        size_t dataLength = buffer.readVarInt();
+        size_t dataLength = buffer.readVarNumeric<int>();
         if (dataLength) {
-            tmpBuffer.writeBytes(buffer.readBytes(length - buffer.getVarIntLength(dataLength)));
+            tmpBuffer.writeBytes(buffer.readBytes(length - buffer.getVarNumericLength<int>(dataLength)));
             ByteBuffer buffer = ZLibUtil::uncompress(tmpBuffer, dataLength);
             tmpBuffer.clear();
-            packetId = buffer.readVarInt();
-            dataBuffer.writeBytes(buffer.readBytes(dataLength - buffer.getVarIntLength(packetId)));
+            packetId = buffer.readVarNumeric<int>();
+            dataBuffer.writeBytes(buffer.readBytes(dataLength - buffer.getVarNumericLength<int>(packetId)));
         } else {
-            packetId = buffer.readVarInt();
-            dataBuffer.writeBytes(buffer.readBytes(length - (buffer.getVarIntLength(packetId) + 1))); // 1 = size of varint(0)
+            packetId = buffer.readVarNumeric<int>();
+            dataBuffer.writeBytes(buffer.readBytes(length - (buffer.getVarNumericLength<int>(packetId) + 1))); // 1 = size of varint(0)
         }
     } else {
-        packetId = buffer.readVarInt();
-        dataBuffer.writeBytes(buffer.readBytes(length - buffer.getVarIntLength(packetId)));
+        packetId = buffer.readVarNumeric<int>();
+        dataBuffer.writeBytes(buffer.readBytes(length - buffer.getVarNumericLength<int>(packetId)));
     }
     buffer.clear();
     return ZincPacket(packetId, dataBuffer);
 }
 void ZincConnection::send(const ZincPacket& packet) {
     ByteBuffer tmpData, data;
-    int dataLength = tmpData.getVarIntLength(packet.getId()) + packet.getData().size();
+    int dataLength = tmpData.getVarNumericLength<int>(packet.getId()) + packet.getData().size();
     if (m_isCompressed) {
         if (dataLength < g_zincConfig.m_threshold) {
-            tmpData.writeVarInt(1 + dataLength); // size of varint(0) + dataLength
-            tmpData.writeVarInt(0);
-            tmpData.writeVarInt(packet.getId());
+            tmpData.writeVarNumeric<int>(1 + dataLength); // size of varint(0) + dataLength
+            tmpData.writeVarNumeric<int>(0);
+            tmpData.writeVarNumeric<int>(packet.getId());
             tmpData.writeBytes(packet.getData().getBytes());
         } else {
-            tmpData.writeVarInt(packet.getId());
+            tmpData.writeVarNumeric<int>(packet.getId());
             tmpData.writeBytes(packet.getData().getBytes());
             ByteBuffer compressedData = ZLibUtil::compress(tmpData);
             tmpData.clear();
-            tmpData.writeVarInt(tmpData.getVarIntLength(dataLength) + compressedData.size());
-            tmpData.writeVarInt(packet.getData().size());
+            tmpData.writeVarNumeric<int>(tmpData.getVarNumericLength<int>(dataLength) + compressedData.size());
+            tmpData.writeVarNumeric<int>(packet.getData().size());
             tmpData.writeByteArray(compressedData.getBytes());
             compressedData.clear();
         }
     } else {
-        tmpData.writeVarInt(dataLength);
-        tmpData.writeVarInt(packet.getId());
+        tmpData.writeVarNumeric<int>(dataLength);
+        tmpData.writeVarNumeric<int>(packet.getId());
         tmpData.writeBytes(packet.getData().getBytes());
     }
     if (m_isEncrypted) {

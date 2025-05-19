@@ -113,10 +113,10 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
     switch (connection->getState()) {
     case ZincConnection::State::Handshake: {
         if (!packet.getId()) {
-            connection->m_info.m_networkInfo.m_protocolVersion = packet.getData().readVarInt();
+            connection->m_info.m_networkInfo.m_protocolVersion = packet.getData().readVarNumeric<int>();
             connection->m_info.m_networkInfo.m_serverAddr = packet.getData().readString();
             connection->m_info.m_networkInfo.m_serverPort = packet.getData().readNumeric<unsigned short>();
-            connection->setState((ZincConnection::State) packet.getData().readVarInt());
+            connection->setState((ZincConnection::State) packet.getData().readVarNumeric<int>());
             if (connection->getState() != ZincConnection::State::Status &&
                 connection->getState() != ZincConnection::State::Login &&
                 connection->getState() != ZincConnection::State::Transfer) connection->setState(ZincConnection::State::Status);
@@ -169,10 +169,10 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
                         "{\"text\":\"Player name can't be int64_ter than 16 characters\",\"color\":\"red\"}]");
                 } else {
                     replyPacket.setId(3);
-                    replyPacket.getData().writeVarInt(g_zincConfig.m_threshold);
+                    replyPacket.getData().writeVarNumeric<int>(g_zincConfig.m_threshold);
                     connection->send(replyPacket);
                     connection->setIsCompressed(true);
-                    replyPacket.setData({});
+                    replyPacket.getData().clear();
                     replyPacket.setId(1);
                     replyPacket.getData().writeString("");
                     replyPacket.getData().writePrefixedArray<unsigned char>(g_zincServer.getRSA().getPublicKeyDER(), &ByteBuffer::writeUnsignedByte);
@@ -199,30 +199,35 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
                     sha.final();
                     std::string url = "https://sessionserver.mojang.com/session/minecraft/hasJoined?username=" + 
                                     connection->m_info.m_playerInfo.m_playerName + "&serverId=" + sha.digestJava();
-                    try {
-                        std::stringstream ss;
-                        ss << curlpp::options::Url(url);
-                        nlohmann::json JSON = nlohmann::json::parse(ss.str());
-                        ss.clear();
-                        connection->m_info.m_playerInfo.m_playerUUID = uuids::uuid::from_string(std::string(JSON["id"])).value();
-                        connection->m_info.m_playerInfo.m_playerName = JSON["name"];
-                        for (auto const& propertyJSON : JSON["properties"]) {
-                            ZincConnectionProperty property;
-                                property.m_name = propertyJSON["name"];
-                                property.m_value = propertyJSON["value"];
-                            if (propertyJSON.contains("signature"))
-                                property.m_signature = propertyJSON["signature"];
-                            connection->m_info.m_playerInfo.m_properties.push_back(property);
-                        }
-                        if (g_zincCookieRequests.contains(ZincConnection::State::Login)) 
-                            for (const auto& cookieRequest : g_zincCookieRequests[ZincConnection::State::Login]) {
-                                replyPacket.setId(5);
-                                replyPacket.getData().writeIdentifier(cookieRequest);
-                                connection->send(replyPacket);
-                                replyPacket.setData({});
+                    bool gotData = false;
+                    for (int i = 0; i < 5; i++) {
+                        try {
+                            std::stringstream ss;
+                            ss << curlpp::options::Url(url);
+                            nlohmann::json JSON = nlohmann::json::parse(ss.str());
+                            ss.clear();
+                            connection->m_info.m_playerInfo.m_playerUUID = uuids::uuid::from_string(std::string(JSON["id"])).value();
+                            connection->m_info.m_playerInfo.m_playerName = JSON["name"];
+                            for (auto const& propertyJSON : JSON["properties"]) {
+                                ZincConnectionProperty property;
+                                    property.m_name = propertyJSON["name"];
+                                    property.m_value = propertyJSON["value"];
+                                if (propertyJSON.contains("signature"))
+                                    property.m_signature = propertyJSON["signature"];
+                                connection->m_info.m_playerInfo.m_properties.push_back(property);
                             }
-                        // TODO: request login plugin channels
-                    } catch (std::exception e) {
+                            gotData = true;
+                            if (g_zincCookieRequests.contains(ZincConnection::State::Login)) 
+                                for (const auto& cookieRequest : g_zincCookieRequests[ZincConnection::State::Login]) {
+                                    replyPacket.setId(5);
+                                    replyPacket.getData().writeIdentifier(cookieRequest);
+                                    connection->send(replyPacket);
+                                    replyPacket.getData().clear();
+                                }
+                            // TODO: request login plugin channels
+                        } catch (std::exception e) { continue; }
+                    }
+                    if (!gotData) {
                         replyPacket.setId(0);
                         replyPacket.getData().writeString(
                             "[\"\",{\"text\":\"Zinc Login Error\",\"bold\":true,\"color\":\"dark_red\"},{\"text\":\"\n\"},"
@@ -275,16 +280,16 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
     }
     case ZincConnection::State::Config: {
         switch (packet.getId()) {
-        case 0: {
+        /* CONFIG INFO */ case 0: {
             connection->m_info.m_settingsInfo.m_locale = packet.getData().readString();
             connection->m_info.m_settingsInfo.m_renderDistance = packet.getData().readByte();
-            connection->m_info.m_settingsInfo.m_chatMode = (ZincConnectionInfo::SettingsInfo::ChatMode) packet.getData().readVarInt();
+            connection->m_info.m_settingsInfo.m_chatMode = (ZincConnectionInfo::SettingsInfo::ChatMode) packet.getData().readVarNumeric<int>();
             connection->m_info.m_settingsInfo.m_enableChatColors = packet.getData().readByte();
             connection->m_info.m_settingsInfo.m_skinParts = packet.getData().readUnsignedByte();
-            connection->m_info.m_settingsInfo.m_mainHand = (ZincConnectionInfo::SettingsInfo::MainHand) packet.getData().readVarInt();
+            connection->m_info.m_settingsInfo.m_mainHand = (ZincConnectionInfo::SettingsInfo::MainHand) packet.getData().readVarNumeric<int>();
             connection->m_info.m_settingsInfo.m_enableTextFiltering = packet.getData().readByte();
             connection->m_info.m_settingsInfo.m_idkWhyIEvenListItHereButOk__enableServerListing = packet.getData().readByte();
-            connection->m_info.m_settingsInfo.m_particleStatus = (ZincConnectionInfo::SettingsInfo::ParticleStatus) packet.getData().readVarInt();
+            connection->m_info.m_settingsInfo.m_particleStatus = (ZincConnectionInfo::SettingsInfo::ParticleStatus) packet.getData().readVarNumeric<int>();
             if (connection->m_info.m_settingsInfo.m_renderDistance > g_zincConfig.m_viewDistance)
                 connection->m_info.m_settingsInfo.m_renderDistance = g_zincConfig.m_viewDistance;
             replyPacket.setId(6);
@@ -294,33 +299,55 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             connection->m_info.m_networkInfo.m_verifyToken = RandomUtil::randomBytes(4);
             replyPacket.getData().writeNumeric<int64_t>(connection->m_info.m_networkInfo.m_lastKeepAlive);
             connection->send(replyPacket);
-            replyPacket.setData({});
+            replyPacket.getData().clear();
             replyPacket.setId(5);
             replyPacket.getData().writeArray<unsigned char>(connection->m_info.m_networkInfo.m_verifyToken, &ByteBuffer::writeUnsignedByte);
             connection->send(replyPacket);
-            replyPacket.setData({});
+            replyPacket.getData().clear();
             replyPacket.setId(12);
             replyPacket.getData().writePrefixedArray<Identifier>({ Identifier("minecraft", "vanilla") }, &ByteBuffer::writeIdentifier);
             connection->send(replyPacket);
-            replyPacket.setData({});
+            replyPacket.getData().clear();
+            if (g_zincCookieRequests.contains(ZincConnection::State::Config)) 
+                for (const auto& cookieRequest : g_zincCookieRequests[ZincConnection::State::Config]) {
+                    replyPacket.setId(0);
+                    replyPacket.getData().writeIdentifier(cookieRequest);
+                    connection->send(replyPacket);
+                    replyPacket.getData().clear();
+                }
             break;
         }
-        case 2: {
-            connection->send(g_zincServerPluginChannels[packet.getData().readIdentifier().toString()](packet.getData(), connection));
+        /* COOKIE RESPONSE */ case 1: {
+            Identifier cookieId = packet.getData().readIdentifier();
+            std::optional<std::vector<char>> bytes = packet.getData().readPrefixedOptional(&ByteBuffer::readPrefixedByteArray);
+            if (g_zincCookieResponseParsers.contains(cookieId.toString())) g_zincCookieResponseParsers[cookieId.toString()](bytes, connection);
             break;
         }
-        case 3: {
-            connection->setState(ZincConnection::State::Config);
+        /* PLUGIN REQUEST */ case 2: {
+            ZincPacket pluginPacket = g_zincServerPluginChannels[packet.getData().readIdentifier().toString()](packet.getData(), connection);
+            if (pluginPacket.getId() != -1) connection->send(pluginPacket);
             break;
         }
-        case 4: {
+        /* CONFIG ACK */ case 3: {
+            connection->setState(ZincConnection::State::Play);
+            break;
+        }
+        /* KEEP ALIVE */ case 4: {
             int64_t keepAlive = packet.getData().readNumeric<int64_t>();
-            if (connection->m_info.m_networkInfo.m_lastKeepAlive != keepAlive) {
+            // if (connection->m_info.m_networkInfo.m_lastKeepAlive != keepAlive) {
                 // send error via disconnect 2
-            } else connection->m_info.m_networkInfo.m_lastKeepAlive = -1;
+                replyPacket.setId(2);
+                replyPacket.getData().writeTextComponent(TextComponent(NBTElement::Compound(
+                    {
+                        NBTElement::String("type", "text"),
+                        NBTElement::String("text", "Server received incorrect KeepAlive packet")
+                    }
+                )));
+                connection->send(replyPacket);
+            // } else connection->m_info.m_networkInfo.m_lastKeepAlive = -1;
             break;
         }
-        case 5: {
+        /* PING */ case 5: {
             std::vector<unsigned char> ping = packet.getData().readArray<unsigned char>(&ByteBuffer::readUnsignedByte, 4);
             if (connection->m_info.m_networkInfo.m_verifyToken != ping) {
                 // send error via disconnect 2

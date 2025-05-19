@@ -59,8 +59,8 @@ void SrvCtlServer::onRead(bufferevent* bev, void* ptr) {
     ByteBuffer buffer = connection->getTCPConnection().read();
     ByteBuffer resultBuffer;
     if (buffer.size() < 9) {
-        resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarIntLength(-1));
-        resultBuffer.writeVarInt(-1);   // status s2c
+        resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarNumericLength<int>(-1));
+        resultBuffer.writeVarNumeric<int>(-1);   // status s2c
         resultBuffer.writeByte(-1);     // state: error -1 (invalid packet)
         TCPUtil::drain(bev, buffer.size());
         connection->getTCPConnection().send(resultBuffer);
@@ -68,21 +68,21 @@ void SrvCtlServer::onRead(bufferevent* bev, void* ptr) {
     }
     size_t length = buffer.readNumeric<size_t>();
     if (buffer.size() < (length + 8)) {
-        resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarIntLength(-1));
-        resultBuffer.writeVarInt(-1);   // status s2c
+        resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarNumericLength<int>(-1));
+        resultBuffer.writeVarNumeric<int>(-1);   // status s2c
         resultBuffer.writeByte(-1);     // state: error -1 (invalid packet)
         TCPUtil::drain(bev, buffer.size());
         connection->getTCPConnection().send(resultBuffer);
         return;
     }
-    int packetId = buffer.readVarInt();
+    int packetId = buffer.readVarNumeric<int>();
     TCPUtil::drain(bev, 8 + length);
     switch (connection->getState()) {
     case SrvCtlConnection::State::Handshake: {
         // don't check packet id. it's useless now
         connection->setState(SrvCtlConnection::State::Login);
-        resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarIntLength(-1));
-        resultBuffer.writeVarInt(-1);   // status s2c
+        resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarNumericLength<int>(-1));
+        resultBuffer.writeVarNumeric<int>(-1);   // status s2c
         resultBuffer.writeByte(1);      // state: success
         connection->getTCPConnection().send(resultBuffer);
         break;
@@ -93,8 +93,8 @@ void SrvCtlServer::onRead(bufferevent* bev, void* ptr) {
             break;
         }
         default: {
-            resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarIntLength(-1));
-            resultBuffer.writeVarInt(-1);  // status s2c
+            resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarNumericLength<int>(-1));
+            resultBuffer.writeVarNumeric<int>(-1);  // status s2c
             resultBuffer.writeByte(-1);    // state: error -1 (invalid packet)
             connection->getTCPConnection().send(resultBuffer);
             break;
@@ -103,8 +103,8 @@ void SrvCtlServer::onRead(bufferevent* bev, void* ptr) {
         break;
     }
     default: {
-        resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarIntLength(-1));
-        resultBuffer.writeVarInt(-1);  // status s2c
+        resultBuffer.writeNumeric<unsigned long>(1 + resultBuffer.getVarNumericLength<int>(-1));
+        resultBuffer.writeVarNumeric<int>(-1);  // status s2c
         resultBuffer.writeByte(-2);    // state: error -2 (unsupported protocol state)
         connection->getTCPConnection().send(resultBuffer);
         break;

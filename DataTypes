@@ -1,6 +1,4 @@
 Name 	Size (bytes) 	Encodes 	Notes
 EntityMetadata 	Varies 	Miscellaneous information about an entity 	See Minecraft Wiki:Projects/wiki.vg merge/Entity metadata#Entity Metadata Format
-RecipeDisplay 	Varies 	See Recipes#Recipe Display structure 	Description of a recipe for use for use by the client.
-SlotDisplay 	Varies 	See Recipes#Slot Display structure 	Description of a recipe ingredient slot for use for use by the client.
 ChunkData 	Varies 	See #Chunk Data below 	
 LightData 	Varies 	See #Light Data below 	
