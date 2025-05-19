@@ -34,146 +34,89 @@ extern const std::string LEGACY_FORMAT_UNDERLINED;
 extern const std::string LEGACY_FORMAT_ITALIC;
 extern const std::string LEGACY_FORMAT_RESET;
 
+extern const NBTElement DEFAULT_SEPARATOR;
+
 struct TextComponent {
-public:
-    bool m_simpleString = false;
-    enum class Type { Text, Translatable, Score, Selector, Keybind, NBT, Undefined };
-    struct Content {
-        std::string m_text; // Text
-        std::string m_translate; // Translatable
-        std::string m_fallback; // Translatable
-        std::vector<TextComponent> m_with; // Translatable
-        std::string m_name; // Score
-        std::string m_objective; // Score
-        std::string m_selector; // Selector
-        NBTElement m_separator; // Selector & NBT
-        std::string m_keybind; // Keybind
-        std::string m_source; // NBT
-        std::string m_nbt; // NBT
-        bool m_interpret; // NBT
-        std::string m_block; // NBT
-        std::string m_entity; // NBT
-        std::string m_storage; // NBT
+    enum class Type : int { Text, Translatable, Score, Selector, Keybind, NBT };
+    struct Translatable {
+        std::string m_translate;
+        std::optional<std::string> m_fallback;
+        std::optional<std::vector<TextComponent>> m_with;
     };
-    struct Format {
-    private:
-        std::string m_color;
-        Identifier m_font;
-        bool m_isBold;
-        bool m_isItalic;
-        bool m_isUnderlined;
-        bool m_isStrikethrough;
-        bool m_isObfuscated;
-        int m_shadowColor; // Red<<16 + Green<<8 + Blue
-    public:
-        Format() 
-            : m_color("white"), m_font("minecraft:default"), m_isBold(false), m_isItalic(false), m_isUnderlined(false), m_isStrikethrough(false), 
-              m_isObfuscated(false), m_shadowColor(0) {}
-        
-        void setColor(const std::string& color);
-        void setFont(const std::string& font);
-        void setFont(const Identifier& font);
-        void setBold(const bool& isBold);
-        void setItalic(const bool& isItalic);
-        void setUnderlined(const bool& isUnderlined);
-        void setStrikethrough(const bool& isStrikethrough);
-        void setObfuscated(const bool& isObfuscated);
-        void setShadowColor(const int& shadowColor);
-        void setShadowColor(const Vector3f& shadowColor);
-        void setShadowColor(const Vector3i& shadowColor);
-
-        std::string& getColor();
-        std::string getColor() const;
-        Identifier& getFont();
-        Identifier getFont() const;
-        bool& isBold();
-        bool isBold() const;
-        bool& isItalic();
-        bool isItalic() const;
-        bool& isUnderlined();
-        bool isUnderlined() const;
-        bool& isStrikethrough();
-        bool isStrikethrough() const;
-        bool& isObfuscated();
-        bool isObfuscated() const;
-        int& getShadowColor();
-        int getShadowColor() const;
-
-        bool operator==(const Format& format) const;
-        bool operator!=(const Format& format) const;
+    struct Score {
+        std::string m_name;
+        std::string m_objective;
     };
-    struct Interactivity {
-    public:
-        struct ClickEvent {
-        public:
-            enum class Action { OpenURL, OpenFile, RunCommand, SuggestCommand, ChangePage, CopyToClipboard, Undefined };
-        private:
-            Action m_action;
-            std::string m_url; // OpenURL
-            std::string m_path; // OpenFile
-            std::string m_command; // RunCommand & SuggestCommand
-            int m_page; // ChangePage
-            std::string m_value; // CopyToClipboard
-        public:
-            ClickEvent() : m_action(Action::Undefined), m_page(0) {}
-            
-            void setAction(const Action& action);
-            void setURL(const std::string& url);
-            void setPath(const std::string& path);
-            void setCommand(const std::string& command);
-            void setPage(const int& page);
-            void setCopyValue(const std::string& value);
-
-            Action& getAction();
-            Action getAction() const;
-            std::string& getURL();
-            std::string getURL() const;
-            std::string& getPath();
-            std::string getPath() const;
-            std::string& getCommand();
-            std::string getCommand() const;
-            int& getPage();
-            int getPage() const;
-            std::string& getCopyValue();
-            std::string getCopyValue() const;
-
-            bool operator==(const ClickEvent& event) const;
-            bool operator!=(const ClickEvent& event) const;
-
-            static ClickEvent OpenURL(const std::string& url);
-            static ClickEvent OpenFile(const std::string& path);
-            static ClickEvent RunCommand(const std::string& command);
-            static ClickEvent SuggestCommand(const std::string& command);
-            static ClickEvent ChangePage(const int& page);
-            static ClickEvent CopyToClipboard(const std::string& value);
+    struct Selector {
+        std::string m_selector;
+        std::optional<NBTElement> m_separator = DEFAULT_SEPARATOR;
+    };
+    struct NBT {
+        enum class NBTType : int { Block, Entity, Storage };
+        std::optional<NBTType> m_source;
+        std::string m_nbt;
+        std::optional<bool> m_interpret = false;
+        std::optional<NBTElement> m_separator = DEFAULT_SEPARATOR;
+        std::optional<std::string> m_block;
+        std::optional<std::string> m_entity;
+        std::optional<std::string> m_storage;
+    };
+    struct ClickEvent {
+        enum class Action : int { OpenURL, OpenFile, RunCommand, SuggestCommand, ChangePage, CopyToClipboard };
+        std::optional<Action> m_action;
+        std::optional<std::string> m_url;
+        std::optional<std::string> m_path;
+        std::optional<std::string> m_command;
+        std::optional<int> m_page;
+        std::optional<std::string> m_value;
+    };
+    struct HoverEvent {
+        enum class Action : int { ShowText, ShowItem, ShowEntity };
+        struct ShowItem {
+            std::string m_id;
+            std::optional<int> m_count;
+            std::optional<std::vector<NBTElement>> m_components;
         };
-        struct HoverEvent {
-        public:
-            enum class Action { ShowText, ShowItem, ShowEntity, Undefined };
-            
-            Action m_action = Action::Undefined;
-            std::vector<TextComponent> m_value; // ShowText & ShowEntity
-            std::string m_id; // ShowItem & ShowEntity
-            int m_count; // ShowItem
-            std::vector<NBTElement> m_components; // ShowItem
-            uuids::uuid m_uuid;
+        struct ShowEntity {
+            std::optional<std::vector<TextComponent>> m_name;
+            std::string m_id;
+            std::optional<uuids::uuid> m_UUID;
         };
-        std::string m_insertion;
-        ClickEvent m_clickEvent;
-        HoverEvent m_hoverEvent;
+        std::optional<Action> m_action;
+        std::optional<std::vector<TextComponent>> m_value;
+        std::optional<ShowItem> m_showItem;
+        std::optional<ShowEntity> m_showEntity;
     };
-    Type m_type;
-    Content m_content;
+
+    std::optional<Type> m_type;
+
+    std::optional<std::string> m_text;
+    std::optional<Translatable> m_translatable;
+    std::optional<Score> m_score;
+    std::optional<Selector> m_selector;
+    std::optional<std::string> m_keybind;
+    std::optional<NBT> m_NBT;
+
+    std::optional<std::string> m_color;
+    std::optional<std::string> m_font;
+    std::optional<bool> m_bold;
+    std::optional<bool> m_italic;
+    std::optional<bool> m_underlined;
+    std::optional<bool> m_strikethrough;
+    std::optional<bool> m_obfuscated;
+
     std::vector<TextComponent> m_extra;
-    Format m_format;
-    Interactivity m_interactivity;
-    std::string m_tag;
-    
-    TextComponent() : m_type(Type::Text) {}
-    TextComponent(const std::vector<char>& bytes, const NBTSettings& settings);
-    TextComponent(const NBTElement& NBT);
-    void decode(const NBTElement& NBT);
-    NBTElement encode(const NBTSettings& settings) const;
+
+    std::optional<std::string> m_insertion;
+    std::optional<ClickEvent> m_clickEvent;
+    std::optional<HoverEvent> m_hoverEvent;
+
+    void encode(ByteBuffer& buffer) const;
+    void encodeJSON(ByteBuffer& buffer) const;
+    std::string encodeJSON() const;
+    void decode(ByteBuffer& buffer);
+    void decodeJSON(ByteBuffer& buffer);
+    void decodeJSON(const std::string& JSON);
 
     bool operator==(const TextComponent& text) const;
     bool operator!=(const TextComponent& text) const;

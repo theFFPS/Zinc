@@ -310,12 +310,12 @@ NBTElement ByteBuffer::readNBTElement() {
 }
 
 void ByteBuffer::writeTextComponent(const TextComponent& textComponent) {
-    NBTElement NBT = textComponent.encode(NBTSettings(false, true, NBTElementType::End));
-    writeNBTElement(NBT);
+    textComponent.encode(*this);
 }
 TextComponent ByteBuffer::readTextComponent() {
-    NBTElement NBT = readNBTElement();
-    return TextComponent(NBT);
+    TextComponent text;
+    text.decode(*this);
+    return text;
 }
 
 void ByteBuffer::writeChatType(const ChatType& chatType) {

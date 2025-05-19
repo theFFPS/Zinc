@@ -337,12 +337,21 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             // if (connection->m_info.m_networkInfo.m_lastKeepAlive != keepAlive) {
                 // send error via disconnect 2
                 replyPacket.setId(2);
-                replyPacket.getData().writeTextComponent(TextComponent(NBTElement::Compound(
-                    {
-                        NBTElement::String("type", "text"),
-                        NBTElement::String("text", "Server received incorrect KeepAlive packet")
-                    }
-                )));
+                TextComponent text;
+                TextComponent errorText;
+                TextComponent newlineText;
+                newlineText.m_type = TextComponent::Type::Text;
+                newlineText.m_text = "\n";
+                text.m_type = TextComponent::Type::Text;
+                text.m_text = "Zinc Login Error";
+                text.m_bold = true;
+                text.m_color = "dark_red";
+                errorText.m_type = TextComponent::Type::Text;
+                errorText.m_text = "Server received invalid keep alive packet";
+                errorText.m_color = "red";
+                text.m_extra.push_back(newlineText);
+                text.m_extra.push_back(errorText);
+                replyPacket.getData().writeTextComponent(text);
                 connection->send(replyPacket);
             // } else connection->m_info.m_networkInfo.m_lastKeepAlive = -1;
             break;
