@@ -65,7 +65,7 @@ void TextComponent::encode(ByteBuffer& buffer) const {
         element.m_childElements.push_back(NBTElement::String("translate", translatable.m_translate));
         element.m_childElements.push_back(NBTElement::String("fallback", translatable.m_fallback.value_or("nil")));
         std::vector<NBTElement> elements;
-        for (const TextComponent& text : translatable.m_with.value_or({})) {
+        if (translatable.m_with.has_value()) for (const TextComponent& text : translatable.m_with.value()) {
             ByteBuffer buffer;
             text.encode(buffer);
             NBTElement element = buffer.readNBTElement();
