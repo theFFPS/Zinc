@@ -121,5 +121,11 @@ struct TextComponent {
     bool operator==(const TextComponent& text) const;
     bool operator!=(const TextComponent& text) const;
 };
+struct TextComponentBuilder {
+private:
+    TextComponent m_text;
+
+public:
+};
 
 }
