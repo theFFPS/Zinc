@@ -107,11 +107,11 @@ std::pair<size_t, size_t> ByteBuffer::InternalByteBuffer::getWriter() const {
 }
 void ByteBuffer::InternalByteBuffer::setReader(const std::pair<size_t, size_t>& reader) {
     m_readBlock = reader.first;
-    m_readOffset = reader.first;
+    m_readOffset = reader.second;
 }
 void ByteBuffer::InternalByteBuffer::setWriter(const std::pair<size_t, size_t>& writer) {
     m_writeBlock = writer.first;
-    m_writeOffset = writer.first;
+    m_writeOffset = writer.second;
 }
 bool ByteBuffer::InternalByteBuffer::operator==(const InternalByteBuffer& buffer) const {
     return getReader() == buffer.getReader() && getWriter() == buffer.getWriter() && getBytes() == buffer.getBytes() 

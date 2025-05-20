@@ -7,6 +7,7 @@
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
+#include <fstream>
 #include <ZincConstants.h>
 #include <ZincConfig.h>
 
@@ -217,14 +218,6 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
                                 connection->m_info.m_playerInfo.m_properties.push_back(property);
                             }
                             gotData = true;
-                            if (g_zincCookieRequests.contains(ZincConnection::State::Login)) 
-                                for (const auto& cookieRequest : g_zincCookieRequests[ZincConnection::State::Login]) {
-                                    replyPacket.setId(5);
-                                    replyPacket.getData().writeIdentifier(cookieRequest);
-                                    connection->send(replyPacket);
-                                    replyPacket.getData().clear();
-                                }
-                            // TODO: request login plugin channels
                         } catch (std::exception e) { continue; }
                     }
                     if (!gotData) {
@@ -236,11 +229,19 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
                         return;
                     }
                 }
+                if (g_zincCookieRequests.contains(ZincConnection::State::Login)) 
+                    for (const auto& cookieRequest : g_zincCookieRequests[ZincConnection::State::Login]) {
+                        replyPacket.setId(5);
+                        replyPacket.getData().writeIdentifier(cookieRequest);
+                        connection->send(replyPacket);
+                        replyPacket.getData().clear();
+                    }
+                // TODO: request login plugin channels
                 replyPacket.setId(2);
                 replyPacket.getData().writeUUID(connection->m_info.m_playerInfo.m_playerUUID);
                 replyPacket.getData().writeString(connection->m_info.m_playerInfo.m_playerName);
                 replyPacket.getData().writePrefixedArray<ZincConnectionProperty>(connection->m_info.m_playerInfo.m_properties, &writeZincConnectionProperty);
-                replyPacket.getData().writeByte(0);
+                if (g_zincConfig.m_onlineMode) replyPacket.getData().writeByte(0);
             } else {
                 replyPacket.setId(0);
                 replyPacket.getData().writeString(
@@ -334,32 +335,29 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
         }
         /* KEEP ALIVE */ case 4: {
             int64_t keepAlive = packet.getData().readNumeric<int64_t>();
-            // if (connection->m_info.m_networkInfo.m_lastKeepAlive != keepAlive) {
-                // send error via disconnect 2
+            if (connection->m_info.m_networkInfo.m_lastKeepAlive != keepAlive) {
                 replyPacket.setId(2);
-                TextComponent text;
-                TextComponent errorText;
-                TextComponent newlineText;
-                newlineText.m_type = TextComponent::Type::Text;
-                newlineText.m_text = "\n";
-                text.m_type = TextComponent::Type::Text;
-                text.m_text = "Zinc Login Error";
-                text.m_bold = true;
-                text.m_color = "dark_red";
-                errorText.m_type = TextComponent::Type::Text;
-                errorText.m_text = "Server received invalid keep alive packet";
-                errorText.m_color = "red";
-                text.m_extra.push_back(newlineText);
-                text.m_extra.push_back(errorText);
-                replyPacket.getData().writeTextComponent(text);
+                replyPacket.getData().writeTextComponent(TextComponentBuilder()
+                    .text("Zinc Login Error").color("dark_red").bold()
+                    .append(TextComponentBuilder().text("\n").build())
+                    .append(TextComponentBuilder().text("Server received invalid keep alive packet").color("red").bold(false).build())
+                    .build()
+                );
                 connection->send(replyPacket);
-            // } else connection->m_info.m_networkInfo.m_lastKeepAlive = -1;
+            } else connection->m_info.m_networkInfo.m_lastKeepAlive = -1;
             break;
         }
         /* PING */ case 5: {
             std::vector<unsigned char> ping = packet.getData().readArray<unsigned char>(&ByteBuffer::readUnsignedByte, 4);
             if (connection->m_info.m_networkInfo.m_verifyToken != ping) {
-                // send error via disconnect 2
+                replyPacket.setId(2);
+                replyPacket.getData().writeTextComponent(TextComponentBuilder()
+                    .text("Zinc Login Error").color("dark_red").bold()
+                    .append(TextComponentBuilder().text("\n").build())
+                    .append(TextComponentBuilder().text("Server received invalid ping packet").color("red").bold(false).build())
+                    .build()
+                );
+                connection->send(replyPacket);
             }
             break;
         }

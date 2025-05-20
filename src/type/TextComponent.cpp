@@ -31,12 +31,11 @@ const std::string LEGACY_FORMAT_RESET = "§r";
 const NBTElement DEFAULT_SEPARATOR = NBTElement::Compound({
     NBTElement::String("type", "text"),
     NBTElement::String("color", "gray"),
-    NBTElement::String("text", ", "),
-    NBTElement::List("extra", {})
+    NBTElement::String("text", ", ")
 });
 
-void TextComponent::encode(ByteBuffer& buffer) const {
-    NBTElement element;
+NBTElement TextComponent::encode() const {
+    NBTElement element = NBTElement::Compound({});
     Type type = Type::Text;
     if (m_type.has_value()) type = m_type.value();
     else {
@@ -46,12 +45,6 @@ void TextComponent::encode(ByteBuffer& buffer) const {
         else if (m_selector.has_value()) type = Type::Selector;
         else if (m_keybind.has_value()) type = Type::Keybind;
         else if (m_NBT.has_value()) type = Type::NBT;
-        else {
-            element.m_childElements.push_back(NBTElement::String("type", "text"));
-            element.m_childElements.push_back(NBTElement::String("text", ""));
-            buffer.writeNBTElement(element);
-            return;
-        }
     }
     switch (type) {
     case Type::Text: {
@@ -65,13 +58,8 @@ void TextComponent::encode(ByteBuffer& buffer) const {
         element.m_childElements.push_back(NBTElement::String("translate", translatable.m_translate));
         element.m_childElements.push_back(NBTElement::String("fallback", translatable.m_fallback.value_or("nil")));
         std::vector<NBTElement> elements;
-        if (translatable.m_with.has_value()) for (const TextComponent& text : translatable.m_with.value()) {
-            ByteBuffer buffer;
-            text.encode(buffer);
-            NBTElement element = buffer.readNBTElement();
-            elements.push_back(element);
-        }
-        element.m_childElements.push_back(NBTElement::List("with", elements));
+        if (translatable.m_with.has_value()) for (const TextComponent& text : translatable.m_with.value()) elements.push_back(text.encode());
+        if (elements.size()) element.m_childElements.push_back(NBTElement::List("with", elements));
         break;
     }
     case Type::Score: {
@@ -135,20 +123,15 @@ void TextComponent::encode(ByteBuffer& buffer) const {
     default: break;
     }
     std::vector<NBTElement> elements;
-    for (const TextComponent& text : m_extra) {
-        ByteBuffer buffer;
-        text.encode(buffer);
-        NBTElement textElement = buffer.readNBTElement();
-        elements.push_back(textElement);
-    }
-    element.m_childElements.push_back(NBTElement::List("extra", elements));
-    element.m_childElements.push_back(NBTElement::String("color", m_color.value_or("gray")));
-    element.m_childElements.push_back(NBTElement::String("font", m_font.value_or("minecraft:default")));
-    element.m_childElements.push_back(NBTElement::Byte("bold", m_bold.value_or(false)));
-    element.m_childElements.push_back(NBTElement::Byte("italic", m_italic.value_or(false)));
-    element.m_childElements.push_back(NBTElement::Byte("underlined", m_underlined.value_or(false)));
-    element.m_childElements.push_back(NBTElement::Byte("strikethrough", m_strikethrough.value_or(false)));
-    element.m_childElements.push_back(NBTElement::Byte("obfuscated", m_obfuscated.value_or(false)));
+    for (const TextComponent& text : m_extra) elements.push_back(text.encode());
+    if (elements.size()) element.m_childElements.push_back(NBTElement::List("extra", elements));
+    if (m_color.has_value()) element.m_childElements.push_back(NBTElement::String("color", m_color.value()));
+    if (m_font.has_value()) element.m_childElements.push_back(NBTElement::String("font", m_font.value()));
+    if (m_bold.has_value()) element.m_childElements.push_back(NBTElement::Byte("bold", m_bold.value()));
+    if (m_italic.has_value()) element.m_childElements.push_back(NBTElement::Byte("italic", m_italic.value()));
+    if (m_underlined.has_value()) element.m_childElements.push_back(NBTElement::Byte("underlined", m_underlined.value()));
+    if (m_strikethrough.has_value()) element.m_childElements.push_back(NBTElement::Byte("strikethrough", m_strikethrough.value()));
+    if (m_obfuscated.has_value()) element.m_childElements.push_back(NBTElement::Byte("obfuscated", m_obfuscated.value()));
     if (m_insertion.has_value()) element.m_childElements.push_back(NBTElement::String("insertion", m_insertion.value()));
     if (m_clickEvent.has_value()) {
         NBTElement clickEventElement = NBTElement::Compound("click_event", {});
@@ -210,12 +193,13 @@ void TextComponent::encode(ByteBuffer& buffer) const {
         switch (action) {
         case HoverEvent::Action::ShowText: {
             hoverEventElement.m_childElements.push_back(NBTElement::String("action", "show_text"));
-            ByteBuffer buffer;
-            if (hoverEvent.m_value.has_value()) hoverEvent.m_value.value()[0].encode(buffer);
-            else TextComponent().encode(buffer);
-            NBTElement textNBT = buffer.readNBTElement();
-            textNBT.m_tag = "value";
-            hoverEventElement.m_childElements.push_back(textNBT);
+            if (hoverEvent.m_value.has_value()) {
+                if (hoverEvent.m_value.value().size()) {
+                    NBTElement textNBT = hoverEvent.m_value.value()[0].encode();
+                    textNBT.m_tag = "value";
+                    hoverEventElement.m_childElements.push_back(textNBT);
+                } else hoverEventElement.m_childElements.push_back(NBTElement::String("value", ""));
+            } else hoverEventElement.m_childElements.push_back(NBTElement::String("value", ""));
             break;
         }
         case HoverEvent::Action::ShowItem: {
@@ -223,7 +207,10 @@ void TextComponent::encode(ByteBuffer& buffer) const {
             hoverEventElement.m_childElements.push_back(NBTElement::String("action", "show_item"));
             hoverEventElement.m_childElements.push_back(NBTElement::String("id", item.m_id));
             if (item.m_count.has_value()) hoverEventElement.m_childElements.push_back(NBTElement::Int("count", item.m_count.value()));
-            if (item.m_components.has_value()) hoverEventElement.m_childElements.push_back(NBTElement::List("components", item.m_components.value()));
+            if (item.m_components.has_value()) {
+                if (item.m_components.value().size())
+                    hoverEventElement.m_childElements.push_back(NBTElement::List("components", item.m_components.value()));
+            }
             break;
         }
         case HoverEvent::Action::ShowEntity: {
@@ -231,12 +218,11 @@ void TextComponent::encode(ByteBuffer& buffer) const {
             hoverEventElement.m_childElements.push_back(NBTElement::String("action", "show_entity"));
             hoverEventElement.m_childElements.push_back(NBTElement::String("id", entity.m_id));
             if (entity.m_name.has_value()) {
-                ByteBuffer buffer;
-                if (entity.m_name.has_value()) entity.m_name.value()[0].encode(buffer);
-                else TextComponent().encode(buffer);
-                NBTElement textNBT = buffer.readNBTElement();
-                textNBT.m_tag = "name";
-                hoverEventElement.m_childElements.push_back(textNBT);
+                if (entity.m_name.value().size()) {
+                    NBTElement textNBT = entity.m_name.value()[0].encode();
+                    textNBT.m_tag = "name";
+                    hoverEventElement.m_childElements.push_back(textNBT);
+                }
             }
             if (entity.m_UUID.has_value()) 
                 hoverEventElement.m_childElements.push_back(NBTElement::String("uuid", uuids::to_string(entity.m_UUID.value())));
@@ -246,18 +232,15 @@ void TextComponent::encode(ByteBuffer& buffer) const {
         }
         element.m_childElements.push_back(hoverEventElement);
     }
-    buffer.writeNBTElement(element);
+    return element;
 }
-void TextComponent::encodeJSON(ByteBuffer& buffer) const {
-
-}
-std::string TextComponent::encodeJSON() const {
-    ByteBuffer buffer;
-    encodeJSON(buffer);
-    return buffer.readString();
+void TextComponent::encode(ByteBuffer& buffer) const {
+    buffer.writeNBTElement(encode());
 }
 void TextComponent::decode(ByteBuffer& buffer) {
-    NBTElement element = buffer.readNBTElement();
+    decode(buffer.readNBTElement());
+}
+void TextComponent::decode(const NBTElement& element) {
     std::string typeString;
     for (const NBTElement& subelement : element.m_childElements) {
         if (subelement.m_tag == "type") typeString = subelement.m_stringValue;
@@ -468,22 +451,273 @@ void TextComponent::decode(ByteBuffer& buffer) {
         m_NBT = nbt;
     }
 }
-void TextComponent::decodeJSON(ByteBuffer& buffer) {
-
-}
-void TextComponent::decodeJSON(const std::string& JSON) {
-    ByteBuffer buffer;
-    buffer.writeString(JSON);
-    decodeJSON(buffer);
-}
 bool TextComponent::operator==(const TextComponent& text) const {
-    ByteBuffer buffer1, buffer2;
-    encode(buffer1);
-    text.encode(buffer2);
-    return buffer1.readNBTElement() == buffer2.readNBTElement();
+    return encode() == text.encode();
 }
 bool TextComponent::operator!=(const TextComponent& text) const {
     return !operator==(text);
+}
+
+TextComponent::Translatable& TextComponentBuilder::TranslatableBuilder::build() {
+    return m_translatable;
+}
+TextComponent::Translatable TextComponentBuilder::TranslatableBuilder::build() const {
+    return m_translatable;
+}
+TextComponentBuilder::TranslatableBuilder& TextComponentBuilder::TranslatableBuilder::translate(const std::string& translate) {
+    m_translatable.m_translate = translate;
+    return *this;
+}
+TextComponentBuilder::TranslatableBuilder& TextComponentBuilder::TranslatableBuilder::fallback(const std::string& fallback) {
+    m_translatable.m_fallback = fallback;
+    return *this;
+}
+TextComponentBuilder::TranslatableBuilder& TextComponentBuilder::TranslatableBuilder::with(const std::vector<TextComponent>& with) {
+    m_translatable.m_with = with;
+    return *this;
+}
+
+TextComponent::Score& TextComponentBuilder::ScoreBuilder::build() {
+    return m_score;
+}
+TextComponent::Score TextComponentBuilder::ScoreBuilder::build() const {
+    return m_score;
+}
+TextComponentBuilder::ScoreBuilder& TextComponentBuilder::ScoreBuilder::name(const std::string& name) {
+    m_score.m_name = name;
+    return *this;
+}
+TextComponentBuilder::ScoreBuilder& TextComponentBuilder::ScoreBuilder::objective(const std::string& objective) {
+    m_score.m_objective = objective;
+    return *this;
+}
+
+TextComponent::Selector& TextComponentBuilder::SelectorBuilder::build() {
+    return m_selector;
+}
+TextComponent::Selector TextComponentBuilder::SelectorBuilder::build() const {
+    return m_selector;
+}
+TextComponentBuilder::SelectorBuilder& TextComponentBuilder::SelectorBuilder::selector(const std::string& selector) {
+    m_selector.m_selector = selector;
+    return *this;
+}
+TextComponentBuilder::SelectorBuilder& TextComponentBuilder::SelectorBuilder::separator(const TextComponent& separator) {
+    m_selector.m_separator = separator.encode();
+    return *this;
+}
+
+TextComponent::NBT& TextComponentBuilder::NBTBuilder::build() {
+    return m_NBT;
+}
+TextComponent::NBT TextComponentBuilder::NBTBuilder::build() const {
+    return m_NBT;
+}
+TextComponentBuilder::NBTBuilder& TextComponentBuilder::NBTBuilder::nbt(const std::string& nbt) {
+    m_NBT.m_nbt = nbt;
+    return *this;
+}
+TextComponentBuilder::NBTBuilder& TextComponentBuilder::NBTBuilder::block(const std::string& block) {
+    m_NBT.m_block = block;
+    m_NBT.m_source = TextComponent::NBT::NBTType::Block;
+    return *this;
+}
+TextComponentBuilder::NBTBuilder& TextComponentBuilder::NBTBuilder::entity(const std::string& entity) {
+    m_NBT.m_entity = entity;
+    m_NBT.m_source = TextComponent::NBT::NBTType::Entity;
+    return *this;
+}
+TextComponentBuilder::NBTBuilder& TextComponentBuilder::NBTBuilder::storage(const std::string& storage) {
+    m_NBT.m_storage = storage;
+    m_NBT.m_source = TextComponent::NBT::NBTType::Storage;
+    return *this;
+}
+TextComponentBuilder::NBTBuilder& TextComponentBuilder::NBTBuilder::separator(const TextComponent& separator) {
+    m_NBT.m_separator = separator.encode();
+    return *this;
+}
+TextComponentBuilder::NBTBuilder& TextComponentBuilder::NBTBuilder::interpret(const bool& state) {
+    m_NBT.m_interpret = state;
+    return *this;
+}
+
+TextComponent::ClickEvent& TextComponentBuilder::ClickEventBuilder::build() {
+    return m_clickEvent;
+}
+TextComponent::ClickEvent TextComponentBuilder::ClickEventBuilder::build() const {
+    return m_clickEvent;
+}
+TextComponentBuilder::ClickEventBuilder& TextComponentBuilder::ClickEventBuilder::openUrl(const std::string& url) {
+    m_clickEvent.m_action = TextComponent::ClickEvent::Action::OpenURL;
+    m_clickEvent.m_url = url;
+    return *this;
+}
+TextComponentBuilder::ClickEventBuilder& TextComponentBuilder::ClickEventBuilder::openFile(const std::string& path) {
+    m_clickEvent.m_action = TextComponent::ClickEvent::Action::OpenFile;
+    m_clickEvent.m_path = path;
+    return *this;
+}
+TextComponentBuilder::ClickEventBuilder& TextComponentBuilder::ClickEventBuilder::runCommand(const std::string& command) {
+    m_clickEvent.m_action = TextComponent::ClickEvent::Action::RunCommand;
+    m_clickEvent.m_command = command;
+    return *this;
+}
+TextComponentBuilder::ClickEventBuilder& TextComponentBuilder::ClickEventBuilder::suggestCommand(const std::string& command) {
+    m_clickEvent.m_action = TextComponent::ClickEvent::Action::SuggestCommand;
+    m_clickEvent.m_command = command;
+    return *this;
+}
+TextComponentBuilder::ClickEventBuilder& TextComponentBuilder::ClickEventBuilder::changePage(const int& page) {
+    m_clickEvent.m_action = TextComponent::ClickEvent::Action::ChangePage;
+    m_clickEvent.m_page = page;
+    return *this;
+}
+TextComponentBuilder::ClickEventBuilder& TextComponentBuilder::ClickEventBuilder::copyToClipboard(const std::string& value) {
+    m_clickEvent.m_action = TextComponent::ClickEvent::Action::CopyToClipboard;
+    m_clickEvent.m_value = value;
+    return *this;
+}
+
+TextComponent::HoverEvent::ShowItem& TextComponentBuilder::HoverEventBuilder::ShowItemBuilder::build() {
+    return m_showItem;
+}
+TextComponent::HoverEvent::ShowItem TextComponentBuilder::HoverEventBuilder::ShowItemBuilder::build() const {
+    return m_showItem;
+}
+TextComponentBuilder::HoverEventBuilder::ShowItemBuilder& TextComponentBuilder::HoverEventBuilder::ShowItemBuilder::id(const std::string& id) {
+    m_showItem.m_id = id;
+    return *this;
+}
+TextComponentBuilder::HoverEventBuilder::ShowItemBuilder& TextComponentBuilder::HoverEventBuilder::ShowItemBuilder::count(const int& count) {
+    m_showItem.m_count = count;
+    return *this;
+}
+TextComponentBuilder::HoverEventBuilder::ShowItemBuilder& 
+    TextComponentBuilder::HoverEventBuilder::ShowItemBuilder::components(const std::vector<NBTElement>& components) {
+    m_showItem.m_components = components;
+    return *this;
+}
+
+TextComponent::HoverEvent::ShowEntity& TextComponentBuilder::HoverEventBuilder::ShowEntityBuilder::build() {
+    return m_showEntity;
+}
+TextComponent::HoverEvent::ShowEntity TextComponentBuilder::HoverEventBuilder::ShowEntityBuilder::build() const {
+    return m_showEntity;
+}
+TextComponentBuilder::HoverEventBuilder::ShowEntityBuilder& TextComponentBuilder::HoverEventBuilder::ShowEntityBuilder::name(const TextComponent& name) {
+    m_showEntity.m_name = {name};
+    return *this;
+}
+TextComponentBuilder::HoverEventBuilder::ShowEntityBuilder& TextComponentBuilder::HoverEventBuilder::ShowEntityBuilder::id(const std::string& id) {
+    m_showEntity.m_id = id;
+    return *this;
+}
+TextComponentBuilder::HoverEventBuilder::ShowEntityBuilder& TextComponentBuilder::HoverEventBuilder::ShowEntityBuilder::uuid(const uuids::uuid& uuid) {
+    m_showEntity.m_UUID = uuid;
+    return *this;
+}
+
+TextComponent::HoverEvent& TextComponentBuilder::HoverEventBuilder::build() {
+    return m_hoverEvent;
+}
+TextComponent::HoverEvent TextComponentBuilder::HoverEventBuilder::build() const {
+    return m_hoverEvent;
+}
+TextComponentBuilder::HoverEventBuilder& TextComponentBuilder::HoverEventBuilder::showText(const TextComponent& text) {
+    m_hoverEvent.m_action = TextComponent::HoverEvent::Action::ShowText;
+    m_hoverEvent.m_value = {text};
+    return *this;
+}
+TextComponentBuilder::HoverEventBuilder& TextComponentBuilder::HoverEventBuilder::showItem(const TextComponent::HoverEvent::ShowItem& item) {
+    m_hoverEvent.m_action = TextComponent::HoverEvent::Action::ShowItem;
+    m_hoverEvent.m_showItem = item;
+    return *this;
+}
+TextComponentBuilder::HoverEventBuilder& TextComponentBuilder::HoverEventBuilder::showEntity(const TextComponent::HoverEvent::ShowEntity& entity) {
+    m_hoverEvent.m_action = TextComponent::HoverEvent::Action::ShowEntity;
+    m_hoverEvent.m_showEntity = entity;
+    return *this;
+}
+
+TextComponent& TextComponentBuilder::build() {
+    return m_text;
+}
+TextComponent TextComponentBuilder::build() const {
+    return m_text;
+}
+TextComponentBuilder& TextComponentBuilder::text(const std::string& text) {
+    m_text.m_text = text;
+    m_text.m_type = TextComponent::Type::Text;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::translatable(const TextComponent::Translatable& translatable) {
+    m_text.m_translatable = translatable;
+    m_text.m_type = TextComponent::Type::Translatable;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::score(const TextComponent::Score& score) {
+    m_text.m_score = score;
+    m_text.m_type = TextComponent::Type::Score;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::selector(const TextComponent::Selector& selector) {
+    m_text.m_selector = selector;
+    m_text.m_type = TextComponent::Type::Selector;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::keybind(const std::string& keybind) {
+    m_text.m_keybind = keybind;
+    m_text.m_type = TextComponent::Type::Keybind;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::nbt(const TextComponent::NBT& nbt) {
+    m_text.m_NBT = nbt;
+    m_text.m_type = TextComponent::Type::NBT;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::bold(const bool& state) {
+    m_text.m_bold = state;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::italic(const bool& state) {
+    m_text.m_italic = state;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::underlined(const bool& state) {
+    m_text.m_underlined = state;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::strikethrough(const bool& state) {
+    m_text.m_strikethrough = state;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::obfuscated(const bool& state) {
+    m_text.m_obfuscated = state;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::font(const Identifier& font) {
+    m_text.m_font = font.toString();
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::color(const std::string& color) {
+    m_text.m_color = color;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::append(const TextComponent& text) {
+    m_text.m_extra.push_back(text);
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::insertion(const std::string& insertion) {
+    m_text.m_insertion = insertion;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::clickEvent(const TextComponent::ClickEvent& clickEvent) {
+    m_text.m_clickEvent = clickEvent;
+    return *this;
+}
+TextComponentBuilder& TextComponentBuilder::hoverEvent(const TextComponent::HoverEvent& hoverEvent) {
+    m_text.m_hoverEvent = hoverEvent;
+    return *this;
 }
 
 }

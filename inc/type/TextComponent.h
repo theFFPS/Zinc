@@ -111,12 +111,10 @@ struct TextComponent {
     std::optional<ClickEvent> m_clickEvent;
     std::optional<HoverEvent> m_hoverEvent;
 
+    NBTElement encode() const;
     void encode(ByteBuffer& buffer) const;
-    void encodeJSON(ByteBuffer& buffer) const;
-    std::string encodeJSON() const;
+    void decode(const NBTElement& element);
     void decode(ByteBuffer& buffer);
-    void decodeJSON(ByteBuffer& buffer);
-    void decodeJSON(const std::string& JSON);
 
     bool operator==(const TextComponent& text) const;
     bool operator!=(const TextComponent& text) const;
@@ -124,8 +122,110 @@ struct TextComponent {
 struct TextComponentBuilder {
 private:
     TextComponent m_text;
-
 public:
+    struct TranslatableBuilder {
+    private:
+        TextComponent::Translatable m_translatable;
+    public:
+        TextComponent::Translatable& build();
+        TextComponent::Translatable build() const;
+        TranslatableBuilder& translate(const std::string& translate);
+        TranslatableBuilder& fallback(const std::string& fallback);
+        TranslatableBuilder& with(const std::vector<TextComponent>& with);
+    };
+    struct ScoreBuilder {
+    private:
+        TextComponent::Score m_score;
+    public:
+        TextComponent::Score& build();
+        TextComponent::Score build() const;
+        ScoreBuilder& name(const std::string& name);
+        ScoreBuilder& objective(const std::string& objective);
+    };
+    struct SelectorBuilder {
+    private:
+        TextComponent::Selector m_selector;
+    public:
+        TextComponent::Selector& build();
+        TextComponent::Selector build() const;
+        SelectorBuilder& selector(const std::string& selector);
+        SelectorBuilder& separator(const TextComponent& separator);
+    };
+    struct NBTBuilder {
+    private:
+        TextComponent::NBT m_NBT;
+    public:
+        TextComponent::NBT& build();
+        TextComponent::NBT build() const;
+        NBTBuilder& nbt(const std::string& nbt);
+        NBTBuilder& block(const std::string& block);
+        NBTBuilder& entity(const std::string& entity);
+        NBTBuilder& storage(const std::string& storage);
+        NBTBuilder& separator(const TextComponent& separator);
+        NBTBuilder& interpret(const bool& state);
+    };
+    struct ClickEventBuilder {
+    private:
+        TextComponent::ClickEvent m_clickEvent;
+    public:
+        TextComponent::ClickEvent& build();
+        TextComponent::ClickEvent build() const;
+        ClickEventBuilder& openUrl(const std::string& url);
+        ClickEventBuilder& openFile(const std::string& path);
+        ClickEventBuilder& runCommand(const std::string& command);
+        ClickEventBuilder& suggestCommand(const std::string& command);
+        ClickEventBuilder& changePage(const int& page);
+        ClickEventBuilder& copyToClipboard(const std::string& value);
+    };
+    struct HoverEventBuilder {
+    private:
+        TextComponent::HoverEvent m_hoverEvent;
+    public:
+        struct ShowItemBuilder {
+        private:
+            TextComponent::HoverEvent::ShowItem m_showItem;
+        public:
+            TextComponent::HoverEvent::ShowItem& build();
+            TextComponent::HoverEvent::ShowItem build() const;
+            ShowItemBuilder& id(const std::string& id);
+            ShowItemBuilder& count(const int& count);
+            ShowItemBuilder& components(const std::vector<NBTElement>& components);
+        };
+        struct ShowEntityBuilder {
+        private:
+            TextComponent::HoverEvent::ShowEntity m_showEntity;
+        public:
+            TextComponent::HoverEvent::ShowEntity& build();
+            TextComponent::HoverEvent::ShowEntity build() const;
+            ShowEntityBuilder& name(const TextComponent& name);
+            ShowEntityBuilder& id(const std::string& id);
+            ShowEntityBuilder& uuid(const uuids::uuid& uuid);
+        };
+        TextComponent::HoverEvent& build();
+        TextComponent::HoverEvent build() const;
+        HoverEventBuilder& showText(const TextComponent& text);
+        HoverEventBuilder& showItem(const TextComponent::HoverEvent::ShowItem& item);
+        HoverEventBuilder& showEntity(const TextComponent::HoverEvent::ShowEntity& entity);
+    };
+    TextComponent& build();
+    TextComponent build() const;
+    TextComponentBuilder& text(const std::string& text);
+    TextComponentBuilder& translatable(const TextComponent::Translatable& translatable);
+    TextComponentBuilder& score(const TextComponent::Score& score);
+    TextComponentBuilder& selector(const TextComponent::Selector& selector);
+    TextComponentBuilder& keybind(const std::string& keybind);
+    TextComponentBuilder& nbt(const TextComponent::NBT& nbt);
+    TextComponentBuilder& bold(const bool& state = true);
+    TextComponentBuilder& italic(const bool& state = true);
+    TextComponentBuilder& underlined(const bool& state = true);
+    TextComponentBuilder& strikethrough(const bool& state = true);
+    TextComponentBuilder& obfuscated(const bool& state = true);
+    TextComponentBuilder& font(const Identifier& font = Identifier("minecraft:default"));
+    TextComponentBuilder& color(const std::string& color = "gray");
+    TextComponentBuilder& append(const TextComponent& text);
+    TextComponentBuilder& insertion(const std::string& insertion);
+    TextComponentBuilder& clickEvent(const TextComponent::ClickEvent& clickEvent);
+    TextComponentBuilder& hoverEvent(const TextComponent::HoverEvent& hoverEvent);
 };
 
 }

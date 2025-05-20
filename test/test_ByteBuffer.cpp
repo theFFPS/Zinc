@@ -74,11 +74,25 @@ TEST(ByteBufferTest, WriteReadStrings) {
     buffer.writeString("Hello World!");
     zinc::Identifier identifier ("zinc", "test");
     buffer.writeIdentifier(identifier);
-    buffer.writeTextComponent(zinc::TextComponent());
+    zinc::TextComponent text;
+    zinc::TextComponent errorText;
+    zinc::TextComponent newlineText;
+    newlineText.m_type = zinc::TextComponent::Type::Text;
+    newlineText.m_text = "\n";
+    text.m_type = zinc::TextComponent::Type::Text;
+    text.m_text = "Zinc Login Error";
+    text.m_bold = true;
+    text.m_color = "dark_red";
+    errorText.m_type = zinc::TextComponent::Type::Text;
+    errorText.m_text = "Server received invalid keep alive packet";
+    errorText.m_color = "red";
+    text.m_extra.push_back(newlineText);
+    text.m_extra.push_back(errorText);
+    buffer.writeTextComponent(text);
 
     EXPECT_TRUE(buffer.readString() == "Hello World!");
     EXPECT_TRUE(buffer.readIdentifier() == identifier);
-    EXPECT_TRUE(buffer.readTextComponent() == zinc::TextComponent());
+    EXPECT_TRUE(buffer.readTextComponent() == text);
 }
 TEST(ByteBufferTest, WriteReadGameTypes) {
     zinc::ByteBuffer buffer;
@@ -133,7 +147,21 @@ TEST(ByteBufferTest, WriteReadGameTypes) {
     zinc::ChatType chat (zinc::ChatTypeDecoration("hi", {}, zinc::NBTElement()), zinc::ChatTypeDecoration("hello", {}, zinc::NBTElement()));
     buffer.writeNBTElement(element);
     buffer.writeChatType(chat);
-    buffer.writeTextComponent(zinc::TextComponent());
+    zinc::TextComponent text;
+    zinc::TextComponent errorText;
+    zinc::TextComponent newlineText;
+    newlineText.m_type = zinc::TextComponent::Type::Text;
+    newlineText.m_text = "\n";
+    text.m_type = zinc::TextComponent::Type::Text;
+    text.m_text = "Zinc Login Error";
+    text.m_bold = true;
+    text.m_color = "dark_red";
+    errorText.m_type = zinc::TextComponent::Type::Text;
+    errorText.m_text = "Server received invalid keep alive packet";
+    errorText.m_color = "red";
+    text.m_extra.push_back(newlineText);
+    text.m_extra.push_back(errorText);
+    buffer.writeTextComponent(text);
 
     EXPECT_TRUE(buffer.readPosition() == position);
     EXPECT_TRUE(buffer.readAngle() == 0.125f);
@@ -153,7 +181,7 @@ TEST(ByteBufferTest, WriteReadGameTypes) {
     EXPECT_TRUE(buffer.readTeleportFlags() == flags);
     EXPECT_TRUE(buffer.readNBTElement() == element);
     EXPECT_TRUE(buffer.readChatType() == chat);
-    EXPECT_TRUE(buffer.readTextComponent() == zinc::TextComponent());
+    EXPECT_TRUE(buffer.readTextComponent() == text);
 }
 
 int main(int argc, char **argv) {
