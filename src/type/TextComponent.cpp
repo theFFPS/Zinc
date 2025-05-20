@@ -232,7 +232,8 @@ void TextComponent::encode(ByteBuffer& buffer) const {
             hoverEventElement.m_childElements.push_back(NBTElement::String("id", entity.m_id));
             if (entity.m_name.has_value()) {
                 ByteBuffer buffer;
-                entity.m_name.value_or({TextComponent()})[0].encode(buffer);
+                if (entity.m_name.has_value()) entity.m_name.value()[0].encode(buffer);
+                else TextComponent().encode(buffer);
                 NBTElement textNBT = buffer.readNBTElement();
                 textNBT.m_tag = "name";
                 hoverEventElement.m_childElements.push_back(textNBT);
