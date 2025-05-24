@@ -234,6 +234,20 @@ NBTElement TextComponent::encode() const {
     }
     return element;
 }
+std::string TextComponent::encodeJSON() const {
+    std::string result = "[";
+    TextComponent baseText = *this;
+    baseText.m_extra.clear();
+    result += baseText.encode().toJSON();
+    for (const TextComponent& text : m_extra) {
+        std::string temporaryJSONArray = text.encodeJSON();
+        if (temporaryJSONArray.size() > 2) result += "," + std::string(temporaryJSONArray.begin() + 1, temporaryJSONArray.end() - 1);
+    }
+    return result + "]";
+}
+void TextComponent::encodeJSON(ByteBuffer& buffer) const {
+    buffer.writeString(encodeJSON());
+}
 void TextComponent::encode(ByteBuffer& buffer) const {
     buffer.writeNBTElement(encode());
 }
@@ -452,7 +466,7 @@ void TextComponent::decode(const NBTElement& element) {
     }
 }
 bool TextComponent::operator==(const TextComponent& text) const {
-    return encode() == text.encode();
+    return encodeJSON() == text.encodeJSON();
 }
 bool TextComponent::operator!=(const TextComponent& text) const {
     return !operator==(text);

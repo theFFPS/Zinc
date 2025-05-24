@@ -26,6 +26,8 @@
 #include "Recipe.h"
 #include "GameTypes.h"
 #include "LightData.h"
+#include "ChunkData.h"
+#include "XorY.h"
 #include "nbt/NBTElement.h"
 
 namespace zinc {
@@ -235,14 +237,14 @@ struct ByteBuffer {
     template<typename T> void writeOptional(const std::optional<T>& value, void(ByteBuffer::*func)(const T&)) {
         if (value.has_value()) (this->*func)(value.value());
     }
-    template<typename T> void writeOptional(const std::optional<T>& value, void(*func)(const T&, ByteBuffer&)) {
+    template<typename T> void writeOptional(const std::optional<T>& value, std::function<void(const T&, ByteBuffer&)>) {
         if (value.has_value()) func(value.value(), *this);
     }
     template<typename T> void writePrefixedOptional(const std::optional<T>& value, void(ByteBuffer::*func)(const T&)) {
         writeByte(value.has_value());
         if (value.has_value()) (this->*func)(value.value());
     }
-    template<typename T> void writePrefixedOptional(const std::optional<T>& value, void(*func)(const T&, ByteBuffer&)) {
+    template<typename T> void writePrefixedOptional(const std::optional<T>& value, std::function<void(const T&, ByteBuffer&)> func) {
         writeByte(value.has_value());
         if (value.has_value()) func(value.value(), *this);
     }
@@ -251,7 +253,7 @@ struct ByteBuffer {
         if (hasValue) result = (this->*func)();
         return result;
     }
-    template<typename T> std::optional<T> readOptional(T(func)(ByteBuffer&), bool hasValue) {
+    template<typename T> std::optional<T> readOptional(std::function<T(ByteBuffer&)> func, bool hasValue) {
         std::optional<T> result;
         if (hasValue) result = func(*this);
         return result;
@@ -259,21 +261,21 @@ struct ByteBuffer {
     template<typename T> std::optional<T> readPrefixedOptional(T(ByteBuffer::*func)()) {
         return readOptional<T>(func, readByte());
     }
-    template<typename T> std::optional<T> readPrefixedOptional(T(func)(ByteBuffer&)) {
+    template<typename T> std::optional<T> readPrefixedOptional(std::function<T(ByteBuffer&)> func) {
         return readOptional<T>(func, readByte());
     }
 
     template<typename T> void writeArray(const std::vector<T>& value, void(ByteBuffer::*func)(const T&)) {
         for (const T& element : value) (this->*func)(element);
     }
-    template<typename T> void writeArray(const std::vector<T>& value, void(*func)(const T&, ByteBuffer&)) {
+    template<typename T> void writeArray(const std::vector<T>& value, std::function<void(const T&, ByteBuffer&)> func) {
         for (const T& element : value) func(element, *this);
     }
     template<typename T> void writePrefixedArray(const std::vector<T>& value, void(ByteBuffer::*func)(const T&)) {
         writeVarNumeric<int>(value.size());
         writeArray(value, func);
     }
-    template<typename T> void writePrefixedArray(const std::vector<T>& value, void(*func)(const T&, ByteBuffer&)) {
+    template<typename T> void writePrefixedArray(const std::vector<T>& value, std::function<void(const T&, ByteBuffer&)> func) {
         writeVarNumeric<int>(value.size());
         writeArray(value, func);
     }
@@ -282,7 +284,7 @@ struct ByteBuffer {
         for (size_t i = 0; i < length; i++) result.push_back((this->*func)());
         return result;
     }
-    template<typename T> std::vector<T> readArray(T(func)(ByteBuffer&), size_t length) {
+    template<typename T> std::vector<T> readArray(std::function<T(ByteBuffer&)> func, size_t length) {
         std::vector<T> result;
         for (size_t i = 0; i < length; i++) result.push_back(func(*this));
         return result;
@@ -290,7 +292,7 @@ struct ByteBuffer {
     template<typename T> std::vector<T> readPrefixedArray(T(ByteBuffer::*func)()) {
         return readArray(func, readVarNumeric<int>());
     }
-    template<typename T> std::vector<T> readPrefixedArray(T(func)(ByteBuffer&)) {
+    template<typename T> std::vector<T> readPrefixedArray(std::function<T(ByteBuffer&)> func) {
         return readArray(func, readVarNumeric<int>());
     }
 
@@ -299,7 +301,7 @@ struct ByteBuffer {
     std::vector<char> readByteArray(const size_t& length);
     std::vector<char> readPrefixedByteArray();
 
-    template<typename T> void writeIDorX(const IDorX<T>& value, void(*func)(const T&, ByteBuffer&)) {
+    template<typename T> void writeIDorX(const IDorX<T>& value, std::function<void(const T&, ByteBuffer&)> func) {
         writeVarNumeric<int>(value.getId());
         if (!value.getId()) func(value.getValue());
     }
@@ -307,7 +309,7 @@ struct ByteBuffer {
         writeVarNumeric<int>(value.getId());
         if (!value.getId()) (this->*func)(value.getValue());
     }
-    template<typename T> IDorX<T> readIDorX(T(func)(ByteBuffer&)) {
+    template<typename T> IDorX<T> readIDorX(std::function<T(ByteBuffer&)> func) {
         IDorX<T> result;
         result.setId(readVarNumeric<int>());
         if (!result.getId()) result.setValue(func(*this));
@@ -409,10 +411,33 @@ struct ByteBuffer {
     JukeBox readJukeBox();
 
     void writeBlockPredicate(const BlockPredicate& predicate);
-    BlockPredicate readBlockPredicate();
 
     void writeLightData(const LightData& data);
     LightData readLightData();
+
+    void writeChunkData(const ChunkData& data);
+    ChunkData readChunkData();
+
+    template<typename TX, typename TY> void writeXorY(const XorY<TX, TY>& xOrY, std::function<void(const TX&, ByteBuffer&)> funcX, 
+                                                      std::function<void(const TY&, ByteBuffer&)> funcY) {
+        if (xOrY.m_x.has_value() == xOrY.m_y.has_value()) return;
+        writeByte(xOrY.m_x.has_value());
+        if (xOrY.m_x.has_value()) funcX(xOrY.m_x.value(), *this);
+        else funcY(xOrY.m_y.value(), *this);
+    }
+    template<typename TX, typename TY> void writeXorY(const XorY<TX, TY>& xOrY, void(ByteBuffer::*funcX)(const TX&), void(ByteBuffer::*funcY)(const TY&)) {
+        if (xOrY.m_x.has_value() == xOrY.m_y.has_value()) return;
+        if (xOrY.m_x.has_value()) (this->*funcX)(xOrY.m_x.value());
+        else (this->*funcY)(xOrY.m_y.value());
+    }
+    template<typename TX, typename TY> XorY<TX, TY> readXorY(std::function<TX(ByteBuffer&)> funcX, std::function<TY(ByteBuffer&)> funcY) {
+        if (readByte()) return XorY<TX, TY>(funcX(*this));
+        return XorY<TX, TY>(funcY(*this));
+    }
+    template<typename TX, typename TY> XorY<TX, TY> readXorY(TX(ByteBuffer::*funcX)(), TY(ByteBuffer::*funcY)()) {
+        if (readByte()) return XorY<TX, TY>((this->*funcX)());
+        return XorY<TX, TY>((this->*funcY)());
+    }
 
     bool operator==(const ByteBuffer& buffer) const;
     bool operator!=(const ByteBuffer& buffer) const;

@@ -8,11 +8,11 @@
 #include <thread>
 
 void ThreadMain() {
-    zinc::g_zincServer.setPort(zinc::g_zincConfig.m_serverPort);
+    zinc::g_zincServer.setPort(zinc::g_zincConfig.m_core.m_network.m_serverPort);
     zinc::g_zincServer.start();
 }
 void ThreadSrvCtl() {
-    zinc::g_srvCtlServer.setPort(zinc::g_zincConfig.m_srvctlPort);
+    zinc::g_srvCtlServer.setPort(zinc::g_zincConfig.m_core.m_network.m_srvctlPort);
     zinc::g_srvCtlServer.start();
 }
 

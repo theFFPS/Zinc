@@ -2,19 +2,17 @@
 
 namespace zinc {
 
-ZincPacket BrandChannel(ByteBuffer&, ZincConnection* connection) {
-    ZincPacket packet;
+void BrandChannel(ByteBuffer&, ZincConnection* connection) {
     if (connection->getState() == ZincConnection::State::Login) {
-        packet.setId(0);
-        packet.getData().writeString(
-            "[\"\",{\"text\":\"Zinc Login Error\",\"bold\":true,\"color\":\"dark_red\"},{\"text\":\"\n\"},"
-            "{\"text\":\"You can't request server brand during Login\",\"color\":\"red\"}]");
+        connection->sendDisconnect(TextComponentBuilder()
+            .text("Zinc Login Error").color("dark_red").bold()
+            .append(TextComponentBuilder().text("\n").build())
+            .append(TextComponentBuilder().text("You can't request server brand during Login").bold(false).color("red").build()).build());
     } else {
-        packet.setId(1);
-        packet.getData().writeIdentifier(Identifier("minecraft", "brand"));
-        packet.getData().writeString("zinc");
+        ByteBuffer buffer;
+        buffer.writeString("zinc");
+        connection->sendPluginMessage(Identifier("minecraft", "brand"), buffer);
     }
-    return packet;
 }
 
 }

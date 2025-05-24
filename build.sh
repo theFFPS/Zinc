@@ -3,4 +3,4 @@
 mkdir -p build
 conan install . --output-folder=build --build=missing
 cmake --preset conan-release
-cmake --build build
+cmake --build build -j$(nproc)

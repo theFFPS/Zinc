@@ -1,0 +1,24 @@
+{
+    "network": {
+        "icon_path": "icon.png",
+        "max_player_count": 20,
+        "motd": "A §bZinc§r Minecraft Server",
+        "server_port": 25565,
+        "srvctl_port": 25575,
+        "threshold": 256
+    },
+    "optimizations": {
+        "simulation_distance": 10,
+        "view_distance": 10
+    },
+    "security": {
+        "allow_pvp": true,
+        "allow_survival_flight": false,
+        "backup_interval_minutes": 1440,
+        "max_concurrent_account": 10,
+        "online_mode": true,
+        "rate_limit_seconds": 2,
+        "rbac_path": "config/rbac",
+        "whitelist": false
+    }
+}

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <vector>
 
@@ -12,7 +12,7 @@ struct ZincPluginLoaderData {
 };
 struct ZincPluginLoader {
 private:
-    std::map<std::string, std::string> m_loadedPlugins;
+    std::unordered_map<std::string, std::string> m_loadedPlugins;
 public:
 
 };

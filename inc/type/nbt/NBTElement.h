@@ -3,6 +3,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <external/JSON.h>
 #include "NBTSettings.h"
 #include "NBTElementType.h"
 
@@ -48,6 +49,8 @@ struct NBTElement {
     std::vector<char> encode() const;
     void encode(ByteBuffer& byteBuffer) const;
     void decode(ByteBuffer& byteBuffer);
+
+    std::string toJSON() const;
 
     bool operator==(const NBTElement& element) const;
     bool operator!=(const NBTElement& element) const;

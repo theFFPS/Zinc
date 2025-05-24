@@ -6,14 +6,14 @@ namespace zinc {
 
 std::vector<char> SlotDisplay::toBytes() const {
     ByteBuffer buffer;
-    buffer.writeVarNumeric<int>(g_slotDisplayTypes[m_type.toString()]);
+    buffer.writeVarNumeric<int>(g_slotDisplayRegistry.m_registryData[m_type.toString()]);
     SlotDisplayData data;
     data.m_itemType = m_itemType;
     data.m_itemStack = m_itemStack;
     data.m_tag = m_tag;
     data.m_children = m_children;
     data.m_customData = m_customData;
-    buffer.writeByteArray(g_slotDisplayWriters[m_type.toString()](data));
+    buffer.writeByteArray(g_slotDisplayRegistry.m_writers[m_type.toString()](data));
     return buffer.getBytes();
 }
 bool SlotDisplay::operator==(const SlotDisplay& slotDisplay) const {
@@ -35,8 +35,8 @@ std::vector<char> RecipeDisplay::toBytes() const {
     data.m_cookingTime = m_cookingTime;
     data.m_experience = m_experience;
     data.m_customData = m_customData;
-    buffer.writeVarNumeric<int>(g_recipeDisplayTypes[m_type.toString()]);
-    buffer.writeByteArray(g_recipeDisplayWriters[m_type.toString()](data));
+    buffer.writeVarNumeric<int>(g_recipeDisplayRegistry.m_registryData[m_type.toString()]);
+    buffer.writeByteArray(g_recipeDisplayRegistry.m_writers[m_type.toString()](data));
     return buffer.getBytes();
 }
 bool RecipeDisplay::operator==(const RecipeDisplay& recipeDisplay) const {

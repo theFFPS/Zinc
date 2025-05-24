@@ -11,7 +11,7 @@ private:
     int m_init, m_started = false;
     TCPServer m_server;
     int m_port;
-    std::map<evutil_socket_t, SrvCtlConnection*> m_clients;
+    std::unordered_map<evutil_socket_t, SrvCtlConnection*> m_clients;
 public:
     SrvCtlServer() : m_init(true), m_server(25575, onAccept), m_port(25575) {}
     SrvCtlServer(const int& port) : m_init(true), m_server(port, onAccept), m_port(port) {}

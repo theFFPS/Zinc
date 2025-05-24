@@ -79,10 +79,10 @@ target_link_libraries(zincsdk PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto
 target_link_libraries(zincsdk_shared PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto libevent::libevent zlib-ng::zlib-ng curlpp::curlpp)
 target_link_libraries(zinc PRIVATE CURL::libcurl OpenSSL::SSL OpenSSL::Crypto libevent::libevent zlib-ng::zlib-ng curlpp::curlpp)
 
-target_compile_options(zinc_static PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC)
-target_compile_options(zincsdk PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC)
-target_compile_options(zincsdk_shared PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC)
-target_compile_options(zinc PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC)
+target_compile_options(zinc_static PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC -g)
+target_compile_options(zincsdk PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC -g)
+target_compile_options(zincsdk_shared PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC -g)
+target_compile_options(zinc PRIVATE -Wall -Wextra -Wpedantic -O5 -march=native -fPIC -g)
 
 enable_testing()
 add_test(NAME ZLibUtilTest COMMAND test_ZLibUtil)

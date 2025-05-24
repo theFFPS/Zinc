@@ -1,6 +1,6 @@
 #include <type/ByteBuffer.h>
-#include <stdexcept>
 #include <registry/DefaultRegistries.h>
+#include <stdexcept>
 
 namespace zinc {
 
@@ -356,8 +356,8 @@ void ByteBuffer::writeSlotDisplay(const SlotDisplay& display) {
 }
 SlotDisplay ByteBuffer::readSlotDisplay() {
     SlotDisplay display;
-    display.m_type = getSlotDisplayTypeId(readVarNumeric<int>());
-    SlotDisplayData data = g_slotDisplayReaders[display.m_type.toString()](*this);
+    display.m_type = g_slotDisplayRegistry.getIdentifierFromValue(readVarNumeric<int>());
+    SlotDisplayData data = g_slotDisplayRegistry.m_readers[display.m_type.toString()](*this);
     display.m_itemType = data.m_itemType;
     display.m_itemStack = data.m_itemStack;
     display.m_tag = data.m_tag;
@@ -371,8 +371,8 @@ void ByteBuffer::writeRecipeDisplay(const RecipeDisplay& display) {
 }
 RecipeDisplay ByteBuffer::readRecipeDisplay() {
     RecipeDisplay display;
-    display.m_type = getRecipeDisplayTypeId(readVarNumeric<int>());
-    RecipeDisplayData data = g_recipeDisplayReaders[display.m_type.toString()](*this);
+    display.m_type = g_recipeDisplayRegistry.getIdentifierFromValue(readVarNumeric<int>());
+    RecipeDisplayData data = g_recipeDisplayRegistry.m_readers[display.m_type.toString()](*this);
     display.m_width = data.m_width;
     display.m_height = data.m_height;
     display.m_ingredients = data.m_ingredients;
@@ -415,7 +415,7 @@ void ByteBuffer::writeFireworkExplosion(const FireworkExplosion& fireworkExplosi
 }
 FireworkExplosion ByteBuffer::readFireworkExplosion() {
     FireworkExplosion fireworkExplosion;
-    fireworkExplosion.m_shape = getFireworkExplosionShapeId(readVarNumeric<int>());
+    fireworkExplosion.m_shape = g_fireworkExplosionShapesRegistry.getIdentifierFromValue(readVarNumeric<int>());
     fireworkExplosion.m_colors = readPrefixedArray<int>(&ByteBuffer::readNumeric<int>);
     fireworkExplosion.m_fadeColors = readPrefixedArray<int>(&ByteBuffer::readNumeric<int>);
     fireworkExplosion.m_hasTrail = readByte();
@@ -481,8 +481,8 @@ void ByteBuffer::writeConsumeEffect(const ConsumeEffect& effect) {
 }
 ConsumeEffect ByteBuffer::readConsumeEffect() {
     ConsumeEffect effect;
-    effect.m_type = getConsumeEffectTypeId(readVarNumeric<int>());
-    ConsumeEffectData data = g_consumeEffectReaders[effect.m_type.toString()](*this);
+    effect.m_type = g_consumeEffectRegistry.getIdentifierFromValue(readVarNumeric<int>());
+    ConsumeEffectData data = g_consumeEffectRegistry.m_readers[effect.m_type.toString()](*this);
     effect.m_effects = data.m_effects;
     effect.m_effectsRemove = data.m_effectsRemove;
     effect.m_diameter = data.m_diameter;
@@ -519,21 +519,6 @@ JukeBox ByteBuffer::readJukeBox() {
 void ByteBuffer::writeBlockPredicate(const BlockPredicate& predicate) {
     writeByteArray(predicate.toBytes());
 }
-BlockPredicate ByteBuffer::readBlockPredicate() {
-    BlockPredicate predicate;
-    predicate.m_blocks = readPrefixedOptional<IDSet>(&ByteBuffer::readIDSet);
-    bool hasProperties = readByte();
-    if (hasProperties) {
-        predicate.m_properties = readPrefixedArray<Property>(&ByteBuffer::readProperty);
-    }
-    predicate.m_NBT = readPrefixedOptional<NBTElement>(&ByteBuffer::readNBTElement);
-    int dataComponentsAmount = readVarNumeric<int>();
-    for (int i = 0; i < dataComponentsAmount; i++) {
-        // invoke data component parser here
-    }
-    predicate.m_partialDataComponents = readPrefixedArray<PartialDataComponentMatcher>(&ByteBuffer::readPartialDataComponentMatcher);
-    return predicate;
-}
 
 void ByteBuffer::writeLightData(const LightData& data) {
     writeByteArray(data.toBytes());
@@ -546,6 +531,44 @@ LightData ByteBuffer::readLightData() {
     data.m_emptyBlockLightMask = readBitSet();
     data.m_skyLightArrays = readPrefixedArray<std::vector<char>>(&ByteBuffer::readPrefixedByteArray);
     data.m_blockLightArrays = readPrefixedArray<std::vector<char>>(&ByteBuffer::readPrefixedByteArray);
+    return data;
+}
+
+void ByteBuffer::writeChunkData(const ChunkData& data) {
+    writeVarNumeric<int>(data.m_heightMaps.size());
+    for (const ChunkDataHeightMap& heightMap : data.m_heightMaps) {
+        writeVarNumeric<int>(heightMap.m_type);
+        writePrefixedArray<long>(heightMap.m_data, &ByteBuffer::writeNumeric<long>);
+    }
+    writePrefixedByteArray(data.m_data);
+    writeVarNumeric<int>(data.m_blockEntities.size());
+    for (const ChunkDataBlockEntity& blockEntity : data.m_blockEntities) {
+        writeUnsignedByte(((blockEntity.m_x & 15) << 4) | (blockEntity.m_z & 15));
+        writeNumeric<short>(blockEntity.m_y);
+        writeVarNumeric<int>(blockEntity.m_blockEntityTypeInt);
+        writeNBTElement(blockEntity.m_data);
+    }
+}
+ChunkData ByteBuffer::readChunkData() {
+    ChunkData data;
+    int heightMapsLength = readVarNumeric<int>();
+    for (int i = 0; i < heightMapsLength; i++) {
+        ChunkDataHeightMap heightMap;
+        heightMap.m_type = readVarNumeric<int>();
+        heightMap.m_data = readPrefixedArray<long>(&ByteBuffer::readNumeric<long>);
+        data.m_heightMaps.push_back(heightMap);
+    }
+    data.m_data = readPrefixedByteArray();
+    int blockEntitiesLength = readVarNumeric<int>();
+    for (int i = 0; i < blockEntitiesLength; i++) {
+        ChunkDataBlockEntity blockEntity;
+        unsigned char packedXZ = readUnsignedByte();
+        blockEntity.m_x = packedXZ >> 4, blockEntity.m_z = packedXZ & 15;
+        blockEntity.m_y = readNumeric<short>();
+        blockEntity.m_blockEntityTypeInt = readVarNumeric<int>();
+        blockEntity.m_data = readNBTElement();
+        data.m_blockEntities.push_back(blockEntity);
+    }
     return data;
 }
 

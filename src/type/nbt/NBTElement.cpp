@@ -310,6 +310,54 @@ bool NBTElement::operator!=(const NBTElement& element) const {
     return !operator==(element);
 }
 
+std::string NBTElement::toJSON() const {
+    switch (m_type) {
+    case NBTElementType::End: return "";
+    case NBTElementType::Byte: {
+        if (m_byteValue == 1) return "true";
+        else if (!m_byteValue) return "false";
+        return std::to_string(m_byteValue);
+    }
+    case NBTElementType::Short: return std::to_string(m_shortValue);
+    case NBTElementType::Int: return std::to_string(m_intValue);
+    case NBTElementType::Long: return std::to_string(m_longValue);
+    case NBTElementType::Float: return std::to_string(m_floatValue);
+    case NBTElementType::Double: return std::to_string(m_doubleValue);
+    case NBTElementType::ByteArray: {
+        std::string result = "[";
+        for (const char& byteValue : m_byteArrayValue) result += std::to_string(byteValue) + ",";
+        if (m_byteArrayValue.size()) result.pop_back();
+        return result + "]";
+    }
+    case NBTElementType::String: return "\"" + m_stringValue + "\"";
+    case NBTElementType::List: {
+        std::string result = "[";
+        for (const NBTElement& element : m_childElements) result += element.toJSON() + ",";
+        if (m_childElements.size()) result.pop_back();
+        return result + "]";
+    }
+    case NBTElementType::Compound: {
+        std::string result = "{";
+        for (const NBTElement& element : m_childElements) result += "\"" + element.m_tag + "\":" + element.toJSON() + ",";
+        if (m_childElements.size()) result.pop_back();
+        return result + "}";
+    }
+    case NBTElementType::IntArray: {
+        std::string result = "[";
+        for (const char& intValue : m_intArrayValue) result += std::to_string(intValue) + ",";
+        if (m_intArrayValue.size()) result.pop_back();
+        return result + "]";
+    }
+    case NBTElementType::LongArray: {
+        std::string result = "[";
+        for (const long& longValue : m_longArrayValue) result += std::to_string(longValue) + ",";
+        if (m_longArrayValue.size()) result.pop_back();
+        return result + "]";
+    }
+    default: return "{}";
+    }
+}
+
 NBTElement NBTElement::Byte(const char& byte, const NBTSettings& settings) {
     NBTElement element;
     element.m_type = NBTElementType::Byte;

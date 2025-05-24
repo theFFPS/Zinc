@@ -112,6 +112,8 @@ struct TextComponent {
     std::optional<HoverEvent> m_hoverEvent;
 
     NBTElement encode() const;
+    std::string encodeJSON() const;
+    void encodeJSON(ByteBuffer& buffer) const;
     void encode(ByteBuffer& buffer) const;
     void decode(const NBTElement& element);
     void decode(ByteBuffer& buffer);

@@ -37,7 +37,8 @@ bool Property::operator!=(const Property& property) const {
 
 std::vector<char> FireworkExplosion::toBytes() const {
     ByteBuffer buffer;
-    if (g_fireworkExplosionShapes.contains(m_shape.toString())) buffer.writeVarNumeric<int>(g_fireworkExplosionShapes[m_shape.toString()]);
+    if (g_fireworkExplosionShapesRegistry.m_registryData.contains(m_shape.toString())) 
+        buffer.writeVarNumeric<int>(g_fireworkExplosionShapesRegistry.m_registryData[m_shape.toString()]);
     else buffer.writeVarNumeric<int>(0);
     buffer.writePrefixedArray<int>(m_colors, &ByteBuffer::writeNumeric<int>);
     buffer.writePrefixedArray<int>(m_fadeColors, &ByteBuffer::writeNumeric<int>);
@@ -126,8 +127,8 @@ std::vector<char> ConsumeEffect::toBytes() const {
     args.m_sound = m_sound;
     args.m_probability = m_probability;
     args.m_diameter = m_diameter;
-    buffer.writeVarNumeric<int>(g_consumeEffectTypes[m_type.toString()]);
-    buffer.writeByteArray(g_consumeEffectWriters[m_type.toString()](args));
+    buffer.writeVarNumeric<int>(g_consumeEffectRegistry.m_registryData[m_type.toString()]);
+    buffer.writeByteArray(g_consumeEffectRegistry.m_writers[m_type.toString()](args));
     return buffer.getBytes();
 }
 bool ConsumeEffect::operator==(const ConsumeEffect& effect) const {

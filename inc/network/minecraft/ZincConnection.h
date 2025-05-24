@@ -53,9 +53,12 @@ private:
 
     AESWrapper m_encrypt, m_decrypt;
 
-    std::mutex m_mutex;
+    std::map<std::vector<unsigned char>, std::string> m_openedLoginPluginChannels;
 public:
     ZincConnectionInfo m_info;
+    int m_kickAtLogin = 0;
+    bool m_loginFinished = false;
+    std::mutex m_mutex;
 
     ZincConnection() : m_tcpConnection(TCPConnection()), m_state(State::Handshake) {}
     ZincConnection(const TCPConnection& connection) : m_tcpConnection(connection), m_state(State::Handshake) {}
@@ -73,10 +76,27 @@ public:
     void setIsCompressed(const bool& isCompressed);
     void setIsEncrypted(const bool& isEncrypted);
 
+    void setupCompression();
     void setupEncryption(const std::vector<unsigned char>& secret);
 
     ZincPacket read();
     void send(const ZincPacket& packet);
+
+    void sendCookieRequest(const Identifier& cookieId);
+    ByteBuffer extractCookieData(ByteBuffer& cookieRawData);
+    void storeCookie(const Identifier& cookieId, const std::vector<char>& payload, long lifetime = -1);
+    void storeCookie(const Identifier& cookieId, const ByteBuffer& payload, long lifetime = -1);
+
+    void sendPluginMessage(const Identifier& pluginChannel, const std::vector<char>& data);
+    void sendPluginMessage(const Identifier& pluginChannel, const ByteBuffer& data);
+
+    void sendDisconnect(const TextComponent& text);
+    void sendLoginError(const std::string& errorMessage);
+
+    int openLoginPluginChannel(const std::string& channel);
+    std::string getLoginPluginChannel(const std::vector<unsigned char>& id);
+    bool isLoginPluginChannelOpened(const std::vector<unsigned char>& id);
+    void closeLoginPluginChannel(const std::vector<unsigned char>& id);
 
     bool operator==(const ZincConnection& connection) const;
     bool operator!=(const ZincConnection& connection) const;

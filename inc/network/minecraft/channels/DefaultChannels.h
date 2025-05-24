@@ -5,6 +5,6 @@
 
 namespace zinc {
 
-ZincPacket BrandChannel(ByteBuffer& buffer, ZincConnection* connection);
+void BrandChannel(ByteBuffer& buffer, ZincConnection* connection);
 
 }
