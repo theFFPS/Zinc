@@ -157,10 +157,7 @@ struct ByteBuffer {
         size_t count = 0;
         using UnsignedT = std::make_unsigned_t<T>;
         UnsignedT uv = static_cast<UnsignedT>(value);
-        do {
-            count++;
-            uv >>= 7;
-        } while (uv);
+        do { count++; uv >>= 7; } while (uv);
         return count;
     }
     template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>> void writeVarNumeric(const T& value) {
@@ -168,10 +165,7 @@ struct ByteBuffer {
         size_t count = 0;
         using UnsignedT = std::make_unsigned_t<T>;
         UnsignedT uv = static_cast<UnsignedT>(value);
-        do {
-            temp[count++] = (uv & 0x7F) | 0x80;
-            uv >>= 7;
-        } while (uv);
+        do { temp[count++] = (uv & 0x7F) | 0x80; uv >>= 7; } while (uv);
         temp[count-1] &= 0x7F;
         m_internalBuffer.write((const char*) temp.data(), count);
     }
