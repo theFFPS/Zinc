@@ -4,7 +4,6 @@
 #include <network/minecraft/ZincServer.h>
 #include <network/srvctl/SrvCtlServer.h>
 #include <util/crypto/CRC32.h>
-#include <stdexcept>
 #include <thread>
 
 void ThreadMain() {

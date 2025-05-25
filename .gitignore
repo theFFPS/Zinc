@@ -2,4 +2,5 @@ build
 conanbuild.sh
 conanrun.sh
 CMakeUserPresets.json
+.cache/
 .build/
