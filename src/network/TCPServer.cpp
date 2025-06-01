@@ -3,7 +3,7 @@
 namespace zinc {
 
 void TCPServer::start() {
-    if (m_port == -1) return;
+    if (!m_port) return;
     if (m_base == nullptr) return;
     struct sockaddr_in sin;
     memset(&sin, 0, sizeof(sin));
@@ -26,7 +26,7 @@ void TCPServer::stop() {
         m_listener = nullptr;
     }
 }
-void TCPServer::setPort(const int& port) {
+void TCPServer::setPort(const unsigned short& port) {
     m_port = port;
 }
 

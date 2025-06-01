@@ -1,7 +1,7 @@
 #include <type/nbt/NBTElement.h>
 #include <type/ByteBuffer.h>
 #include <util/Logger.h>
-#include <iostream>
+#include <util/Memory.h>
 
 namespace zinc {
 
@@ -17,12 +17,12 @@ void NBTElement::encode(ByteBuffer& byteBuffer) const {
     if (type != NBTElementType::End && !m_settings.m_isInArray) {
         if (!byteBuffer.m_isBigEndian) {
             if (!m_settings.m_isNetwork) {
-                byteBuffer.writeNumeric<unsigned short>(m_tag.size());
+                byteBuffer.writeNumeric<unsigned short>(zinc_safe_cast<size_t, uint16_t>(m_tag.size()));
                 byteBuffer.writeBytes(std::vector<char>(m_tag.begin(), m_tag.end()));
             } else byteBuffer.writeString(m_tag);
         } else {
             if (!(m_tag.empty() && m_settings.m_isNetwork)) {
-                byteBuffer.writeNumeric<unsigned short>(m_tag.size());
+                byteBuffer.writeNumeric<unsigned short>(zinc_safe_cast<size_t, uint16_t>(m_tag.size()));
                 byteBuffer.writeBytes(std::vector<char>(m_tag.begin(), m_tag.end()));
             }
         }
@@ -61,28 +61,28 @@ void NBTElement::encode(ByteBuffer& byteBuffer) const {
         break;
     }
     case NBTElementType::ByteArray: {
-        if (byteBuffer.m_isBigEndian) byteBuffer.writeNumeric<unsigned int>(m_byteArrayValue.size());
+        if (byteBuffer.m_isBigEndian) byteBuffer.writeNumeric<unsigned int>(zinc_safe_cast<size_t, unsigned>(m_byteArrayValue.size()));
         else {
-            if (m_settings.m_isNetwork) byteBuffer.writeZigZagVarNumeric<int>(m_byteArrayValue.size());
-            else byteBuffer.writeNumeric<unsigned int>(m_byteArrayValue.size());
+            if (m_settings.m_isNetwork) byteBuffer.writeZigZagVarNumeric<int>(zinc_safe_cast<size_t, int>(m_byteArrayValue.size()));
+            else byteBuffer.writeNumeric<unsigned int>(zinc_safe_cast<size_t, unsigned>(m_byteArrayValue.size()));
         }
         byteBuffer.writeByteArray(m_byteArrayValue);
         break;
     }
     case NBTElementType::IntArray: {
-        if (byteBuffer.m_isBigEndian) byteBuffer.writeNumeric<unsigned int>(m_intArrayValue.size());
+        if (byteBuffer.m_isBigEndian) byteBuffer.writeNumeric<unsigned int>(zinc_safe_cast<size_t, unsigned>(m_intArrayValue.size()));
         else {
-            if (m_settings.m_isNetwork) byteBuffer.writeZigZagVarNumeric<int>(m_intArrayValue.size());
-            else byteBuffer.writeNumeric<unsigned int>(m_intArrayValue.size());
+            if (m_settings.m_isNetwork) byteBuffer.writeZigZagVarNumeric<int>(zinc_safe_cast<size_t, int>(m_intArrayValue.size()));
+            else byteBuffer.writeNumeric<unsigned int>(zinc_safe_cast<size_t, unsigned>(m_intArrayValue.size()));
         }
         byteBuffer.writeArray<int>(m_intArrayValue, &ByteBuffer::writeNumeric<int>);
         break;
     }
     case NBTElementType::LongArray: {
-        if (byteBuffer.m_isBigEndian) byteBuffer.writeNumeric<unsigned int>(m_longArrayValue.size());
+        if (byteBuffer.m_isBigEndian) byteBuffer.writeNumeric<unsigned int>(zinc_safe_cast<size_t, unsigned>(m_longArrayValue.size()));
         else {
-            if (m_settings.m_isNetwork) byteBuffer.writeZigZagVarNumeric<int>(m_longArrayValue.size());
-            else byteBuffer.writeNumeric<unsigned int>(m_longArrayValue.size());
+            if (m_settings.m_isNetwork) byteBuffer.writeZigZagVarNumeric<int>(zinc_safe_cast<size_t, int>(m_longArrayValue.size()));
+            else byteBuffer.writeNumeric<unsigned int>(zinc_safe_cast<size_t, unsigned>(m_longArrayValue.size()));
         }
         byteBuffer.writeArray<long>(m_longArrayValue, &ByteBuffer::writeNumeric<long>);
         break;
@@ -112,10 +112,10 @@ void NBTElement::encode(ByteBuffer& byteBuffer) const {
             settings.m_isInArray = true;
             settings.m_isNetwork = false;
             byteBuffer.writeByte((char) elementType);
-            if (byteBuffer.m_isBigEndian) byteBuffer.writeNumeric<unsigned int>(m_childElements.size());
+            if (byteBuffer.m_isBigEndian) byteBuffer.writeNumeric<unsigned int>(zinc_safe_cast<size_t, unsigned>(m_childElements.size()));
             else {
-                if (m_settings.m_isNetwork) byteBuffer.writeZigZagVarNumeric<int>(m_childElements.size());
-                else byteBuffer.writeNumeric<unsigned int>(m_childElements.size());
+                if (m_settings.m_isNetwork) byteBuffer.writeZigZagVarNumeric<int>(zinc_safe_cast<size_t, int>(m_childElements.size()));
+                else byteBuffer.writeNumeric<unsigned int>(zinc_safe_cast<size_t, unsigned>(m_childElements.size()));
             }
             for (const NBTElement& element : m_childElements) {
                 NBTElement arrayElement = element;
@@ -127,11 +127,11 @@ void NBTElement::encode(ByteBuffer& byteBuffer) const {
     }
     case NBTElementType::String: {
         if (byteBuffer.m_isBigEndian) {
-            byteBuffer.writeNumeric<unsigned short>(m_stringValue.size());
+            byteBuffer.writeNumeric<unsigned short>(zinc_safe_cast<size_t, uint16_t>(m_stringValue.size()));
             byteBuffer.writeBytes(std::vector<char>(m_stringValue.begin(), m_stringValue.end()));
         } else {
             if (!m_settings.m_isNetwork) {
-                byteBuffer.writeNumeric<unsigned short>(m_stringValue.size());
+                byteBuffer.writeNumeric<unsigned short>(zinc_safe_cast<size_t, uint16_t>(m_stringValue.size()));
                 byteBuffer.writeBytes(std::vector<char>(m_stringValue.begin(), m_stringValue.end()));
             } else byteBuffer.writeString(m_stringValue);
         }
@@ -206,7 +206,7 @@ void NBTElement::decode(ByteBuffer& byteBuffer) {
         unsigned length = 0;
         if (byteBuffer.m_isBigEndian) length = byteBuffer.readNumeric<unsigned int>();
         else {
-            if (m_settings.m_isNetwork) length = byteBuffer.readZigZagVarNumeric<int>();
+            if (m_settings.m_isNetwork) length = zinc_safe_cast<int, unsigned>(byteBuffer.readZigZagVarNumeric<int>());
             else length = byteBuffer.readNumeric<unsigned int>();
         }
         m_byteArrayValue = byteBuffer.readByteArray(length);
@@ -216,7 +216,7 @@ void NBTElement::decode(ByteBuffer& byteBuffer) {
         unsigned length = 0;
         if (byteBuffer.m_isBigEndian) length = byteBuffer.readNumeric<unsigned int>();
         else {
-            if (m_settings.m_isNetwork) length = byteBuffer.readZigZagVarNumeric<int>();
+            if (m_settings.m_isNetwork) length = zinc_safe_cast<int, unsigned>(byteBuffer.readZigZagVarNumeric<int>());
             else length = byteBuffer.readNumeric<unsigned int>();
         }
         m_intArrayValue = byteBuffer.readArray<int>(&ByteBuffer::readNumeric<int>, length);
@@ -226,7 +226,7 @@ void NBTElement::decode(ByteBuffer& byteBuffer) {
         unsigned length = 0;
         if (byteBuffer.m_isBigEndian) length = byteBuffer.readNumeric<unsigned int>();
         else {
-            if (m_settings.m_isNetwork) length = byteBuffer.readZigZagVarNumeric<int>();
+            if (m_settings.m_isNetwork) length = zinc_safe_cast<int, unsigned>(byteBuffer.readZigZagVarNumeric<int>());
             else length = byteBuffer.readNumeric<unsigned int>();
         }
         m_longArrayValue = byteBuffer.readArray<long>(&ByteBuffer::readNumeric<long>, length);
@@ -253,7 +253,7 @@ void NBTElement::decode(ByteBuffer& byteBuffer) {
         unsigned length = 0;
         if (byteBuffer.m_isBigEndian) length = byteBuffer.readNumeric<unsigned int>();
         else {
-            if (m_settings.m_isNetwork) length = byteBuffer.readZigZagVarNumeric<int>();
+            if (m_settings.m_isNetwork) length = zinc_safe_cast<int, unsigned>(byteBuffer.readZigZagVarNumeric<int>());
             else length = byteBuffer.readNumeric<unsigned int>();
         }
         if (type == NBTElementType::End) length = 0;
@@ -344,7 +344,7 @@ std::string NBTElement::toJSON() const {
     }
     case NBTElementType::IntArray: {
         std::string result = "[";
-        for (const char& intValue : m_intArrayValue) result += std::to_string(intValue) + ",";
+        for (const int& intValue : m_intArrayValue) result += std::to_string(intValue) + ",";
         if (m_intArrayValue.size()) result.pop_back();
         return result + "]";
     }

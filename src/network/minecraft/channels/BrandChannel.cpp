@@ -1,8 +1,8 @@
-#include <network/minecraft/channels/DefaultChannels.h>
+#include <network/minecraft/channels/BrandChannel.h>
 
 namespace zinc {
 
-void BrandChannel(ByteBuffer&, ZincConnection* connection) {
+ZINC_PLUGIN_CHANNEL(BrandChannel,, connection) {
     if (connection->getState() == ZincConnection::State::Login) {
         connection->sendDisconnect(TextComponentBuilder()
             .text("Zinc Login Error").color("dark_red").bold()

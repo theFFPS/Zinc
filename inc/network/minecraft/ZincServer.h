@@ -3,7 +3,6 @@
 #include "../TCPServer.h"
 #include "ZincConnection.h"
 #include <util/crypto/RSA.h>
-#include <map>
 #include <mutex>
 
 namespace zinc {
@@ -20,9 +19,10 @@ private:
 public:
     int m_onlinePlayers = 0;
     std::mutex m_mutex;
+    RSAWrapper m_cookieRSA;
 
     ZincServer() : m_init(true), m_server(25565, onAccept), m_port(25565) {}
-    ZincServer(const int& port) : m_init(true), m_server(port, onAccept), m_port(port) {}
+    ZincServer(const unsigned short& port) : m_init(true), m_server(port, onAccept), m_port(port) {}
     ~ZincServer() {
         if (m_init) stop();
     }

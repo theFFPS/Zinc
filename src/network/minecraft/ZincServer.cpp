@@ -1,5 +1,5 @@
 #include <network/minecraft/ZincServer.h>
-#include <network/minecraft/channels/DefaultChannels.h>
+#include <network/minecraft/channels/BrandChannel.h>
 #include <registry/DefaultRegistries.h>
 #include <external/JSON.h>
 #include <util/Logger.h>
@@ -8,7 +8,6 @@
 #include <curlpp/cURLpp.hpp>
 #include <curlpp/Easy.hpp>
 #include <curlpp/Options.hpp>
-#include <fstream>
 #include <ZincConstants.h>
 #include <ZincConfig.h>
 
@@ -33,7 +32,7 @@ void ZincServer::stop() {
 }
 void ZincServer::setPort(const int& port) {
     m_port = port;
-    m_server.setPort(port);
+    m_server.setPort(zinc_safe_cast<int, unsigned short>(port));
 }
 RSAWrapper& ZincServer::getRSA() {
     return m_rsa;
@@ -74,7 +73,7 @@ ZincConnection* ZincServer::getClient(evutil_socket_t fd) {
     if (!isConnected(fd)) m_zincLogger.error("Attempted to get unknown client", true); 
     return m_clients[fd];
 }
-void ZincServer::onAccept(evconnlistener* listener, evutil_socket_t fd, struct sockaddr* addr, int socklen, void* ptr) {
+void ZincServer::onAccept(evconnlistener*, evutil_socket_t fd, struct sockaddr* addr, int, void* ptr) {
     bufferevent* bev = bufferevent_socket_new((event_base*) ptr, fd, BEV_OPT_CLOSE_ON_FREE);
     if (!bev) {
         m_zincLogger.error("Failed to create bufferevent");
@@ -89,7 +88,7 @@ void ZincServer::onAccept(evconnlistener* listener, evutil_socket_t fd, struct s
     bufferevent_setcb(bev, onRead, nullptr, onEvent, ptr);
     bufferevent_enable(bev, EV_READ);
 }
-void ZincServer::onRead(bufferevent* bev, void* ptr) {
+void ZincServer::onRead(bufferevent* bev, void* _arg1) {
     if (!g_zincServer.isConnected(bufferevent_getfd(bev))) return;
     ZincConnection* connection = g_zincServer.getClient(bufferevent_getfd(bev));
     ZincPacket packet = connection->read();
@@ -115,7 +114,8 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
         break;
     }
     case ZincConnection::State::Status: {
-        if (!packet.getId()) {
+        if (packet.getId()) connection->send(packet);
+        else {
             replyPacket.setId(0);
             replyPacket.getData().writeString(nlohmann::json{
                 { "version", {
@@ -125,16 +125,16 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
                 { "players", {
                     { "max", g_zincConfig.m_core.m_network.m_maxPlayerCount },
                     { "online", g_zincServer.m_onlinePlayers },
-                    { "sample", {} }
+                    { "sample", nlohmann::json::array() }
                 } },
                 { "description", {
                     { "text", g_zincConfig.m_core.m_network.m_motd }
                 } },
                 { "favicon", "data:image/png;base64," + g_zincConfig.m_core.m_network.m_iconBase64 },
-                { "enforcesSecureChat", true }
+                { "enforcesSecureChat", true },
             }.dump());
             connection->send(replyPacket);
-        } else connection->send(packet);
+        }
         break;
     }
     case ZincConnection::State::Login: {
@@ -205,7 +205,10 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
                                 connection->m_info.m_playerInfo.m_properties.push_back(property);
                             }
                             gotData = true;
-                        } catch (std::exception) { continue; }
+                        } catch (std::exception& e) {
+                            m_zincLogger.error(e.what());
+                            continue; 
+                        }
                     }
                     if (!gotData) {
                         connection->sendLoginError("Server is unable to access mojang session servers");
@@ -265,8 +268,24 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
     case ZincConnection::State::Config: {
         switch (packet.getId()) {
         /* CONFIG INFO */ case 0: {
+            g_zincConfig.m_banMutex.lock();
+            std::optional<BanData> matchedBan;
+            for (const BanData& banData : g_zincConfig.m_bans) {
+                if (
+                    (connection->m_info.m_playerInfo.m_playerName == banData.m_playerName && !g_zincConfig.m_core.m_security.m_onlineMode) ||
+                    (connection->m_info.m_playerInfo.m_playerUUID == banData.m_playerUUID && g_zincConfig.m_core.m_security.m_onlineMode) ||
+                    (connection->getTCPConnection().getIP() == banData.m_playerIp && banData.m_isIpBan)
+                ) {
+                    matchedBan = banData;
+                    break;
+                }
+            }
+            g_zincConfig.m_banMutex.unlock();
+            if (matchedBan.has_value()) {
+                if (connection->sendBanMessage(matchedBan.value())) return;
+            }
             connection->m_info.m_settingsInfo.m_locale = packet.getData().readString();
-            connection->m_info.m_settingsInfo.m_renderDistance = packet.getData().readByte();
+            connection->m_info.m_settingsInfo.m_renderDistance = packet.getData().readUnsignedByte();
             connection->m_info.m_settingsInfo.m_chatMode = (ZincConnectionInfo::SettingsInfo::ChatMode) packet.getData().readVarNumeric<int>();
             connection->m_info.m_settingsInfo.m_enableChatColors = packet.getData().readByte();
             connection->m_info.m_settingsInfo.m_skinParts = packet.getData().readUnsignedByte();
@@ -275,7 +294,8 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             connection->m_info.m_settingsInfo.m_idkWhyIEvenListItHereButOk__enableServerListing = packet.getData().readByte();
             connection->m_info.m_settingsInfo.m_particleStatus = (ZincConnectionInfo::SettingsInfo::ParticleStatus) packet.getData().readVarNumeric<int>();
             if (connection->m_info.m_settingsInfo.m_renderDistance > g_zincConfig.m_core.m_optimizations.m_viewDistance)
-                connection->m_info.m_settingsInfo.m_renderDistance = g_zincConfig.m_core.m_optimizations.m_viewDistance;
+                connection->m_info.m_settingsInfo.m_renderDistance 
+                    = zinc_safe_cast<int, unsigned char>(g_zincConfig.m_core.m_optimizations.m_viewDistance);
             replyPacket.setId(6);
             connection->send(replyPacket);
             replyPacket.setId(4);
@@ -298,6 +318,34 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
             if (g_zincServerInitPluginChannels.contains(ZincConnection::State::Config)) 
                 for (const auto& pluginMessage : g_zincServerInitPluginChannels[ZincConnection::State::Config]) 
                     connection->sendPluginMessage(Identifier(pluginMessage.first), pluginMessage.second(connection));
+            // send registry data (some of it is hardcoded)
+            replyPacket.setId(7);
+            replyPacket.setData(getNetworkRegistry(g_trimMaterial, Identifier("minecraft:trim_material")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_trimPattern, Identifier("minecraft:trim_pattern")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_bannerPattern, Identifier("minecraft:banner_pattern")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_chatType, Identifier("minecraft:chat_type")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_biome, Identifier("minecraft:worldgen/biome")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_damageType, Identifier("minecraft:damage_type")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_dimensionType, Identifier("minecraft:dimension_type")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_wolfVariant, Identifier("minecraft:wolf_variant")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_wolfSoundVariant, Identifier("minecraft:wolf_sound_variant")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_cowVariant, Identifier("minecraft:cow_variant")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_pigVariant, Identifier("minecraft:pig_variant")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_frogVariant, Identifier("minecraft:frog_variant")));
+            connection->send(replyPacket);
+            replyPacket.setData(getNetworkRegistry(g_chickenVariant, Identifier("minecraft:chicken_variant")));
+            connection->send(replyPacket);
             break;
         }
         /* COOKIE RESPONSE */ case 1: {
@@ -339,8 +387,9 @@ void ZincServer::onRead(bufferevent* bev, void* ptr) {
     }
     default: break;
     }
+    if (connection->getTCPConnection().read().size()) onRead(bev, _arg1);
 }
-void ZincServer::onEvent(bufferevent *bev, short events, void *ctx) {
+void ZincServer::onEvent(bufferevent *bev, short events, void*) {
     int fd = bufferevent_getfd(bev);
     m_zincLogger.debug("Event triggered: " + std::to_string(events) + " on fd " + std::to_string(fd));
     if (!g_zincServer.isConnected(bufferevent_getfd(bev))) return;

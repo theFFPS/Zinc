@@ -1,4 +1,30 @@
 {
+    "features": [
+        "voice_chat",
+        "player_models",
+        "redpiler",
+        "voice_chat",
+        "player_models",
+        "redpiler",
+        "voice_chat",
+        "player_models",
+        "redpiler",
+        "voice_chat",
+        "player_models",
+        "redpiler",
+        "voice_chat",
+        "player_models",
+        "redpiler",
+        "voice_chat",
+        "player_models",
+        "redpiler",
+        "voice_chat",
+        "player_models",
+        "redpiler",
+        "voice_chat",
+        "player_models",
+        "redpiler"
+    ],
     "network": {
         "icon_path": "icon.png",
         "max_player_count": 20,
@@ -19,6 +45,11 @@
         "online_mode": true,
         "rate_limit_seconds": 2,
         "rbac_path": "config/rbac",
+        "unban_support": "",
         "whitelist": false
+    },
+    "worlds": {
+        "default_world": "world",
+        "registered_worlds": []
     }
 }

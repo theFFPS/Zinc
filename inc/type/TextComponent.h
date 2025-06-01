@@ -2,10 +2,8 @@
 
 #include <string>
 #include <vector>
-#include "Vector.h"
 #include "Identifier.h"
 #include "nbt/NBTElement.h"
-#include "nbt/NBTSettings.h"
 #include <external/UUID.h>
 
 namespace zinc {

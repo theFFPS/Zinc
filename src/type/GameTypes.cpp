@@ -1,6 +1,7 @@
 #include <type/GameTypes.h>
 #include <type/ByteBuffer.h>
 #include <registry/DefaultRegistries.h>
+#include <util/Memory.h>
 
 namespace zinc {
 
@@ -87,7 +88,7 @@ bool PotionEffect::operator!=(const PotionEffect& effect) const {
 std::vector<char> TrimMaterial::toBytes() const {
     ByteBuffer buffer;
     buffer.writeString(m_suffix);
-    buffer.writeVarNumeric<int>(m_overrides.size());
+    buffer.writeVarNumeric<int>(zinc_safe_cast<size_t, int>(m_overrides.size()));
     for (const std::vector<std::string>& overrideValue : m_overrides) {
         if (overrideValue.size() != 2) continue;
         buffer.writeIdentifier(overrideValue[0]);
@@ -173,13 +174,13 @@ std::vector<char> BlockPredicate::toBytes() const {
     buffer.writePrefixedOptional<IDSet>(m_blocks, &ByteBuffer::writeIDSet);
     buffer.writeByte(m_properties.has_value());
     if (m_properties.has_value()) {
-        buffer.writeVarNumeric<int>(m_properties.value().size());
+        buffer.writeVarNumeric<int>(zinc_safe_cast<size_t, int>(m_properties.value().size()));
         for (const Property& property : m_properties.value()) buffer.writeByteArray(property.toBytes());
     }
     buffer.writePrefixedOptional<NBTElement>(m_NBT, &ByteBuffer::writeNBTElement);
-    buffer.writeVarNumeric<int>(m_dataComponents.size());
+    buffer.writeVarNumeric<int>(zinc_safe_cast<size_t, int>(m_dataComponents.size()));
     for (const ExactDataComponentMatcher& component : m_dataComponents) buffer.writeByteArray(component);
-    buffer.writeVarNumeric<int>(m_partialDataComponents.size());
+    buffer.writeVarNumeric<int>(zinc_safe_cast<size_t, int>(m_partialDataComponents.size()));
     for (const PartialDataComponentMatcher& component : m_partialDataComponents) buffer.writeByteArray(component.toBytes());
     return buffer.getBytes();
 }

@@ -5,7 +5,6 @@
 #include <event2/buffer.h>
 #include <util/Logger.h>
 #include <util/TCPUtil.h>
-#include <cstring>
 
 namespace zinc {
 
@@ -13,13 +12,13 @@ class TCPServer {
 private:
     bool m_started = false;
     Logger m_logger = Logger("TCPServer");
-    int m_port;
+    unsigned short m_port;
     event_base* m_base;
     evconnlistener* m_listener;
     void(*m_onAccept)(evconnlistener* listener, evutil_socket_t fd, struct sockaddr* addr, int socklen, void* ptr);
 public:
-    TCPServer() : m_port(-1), m_base(nullptr), m_listener(nullptr) {}
-    TCPServer(const int& port, void(*onAccept)(evconnlistener* listener, evutil_socket_t fd, struct sockaddr* addr, int socklen, void* ptr)) 
+    TCPServer() : m_port(0), m_base(nullptr), m_listener(nullptr) {}
+    TCPServer(const unsigned short& port, void(*onAccept)(evconnlistener* listener, evutil_socket_t fd, struct sockaddr* addr, int socklen, void* ptr)) 
         : m_port(port), m_base(nullptr), m_listener(nullptr), m_onAccept(onAccept) {
         m_base = event_base_new();
         if (!m_base) {
@@ -27,7 +26,7 @@ public:
         }
     }
     ~TCPServer() {
-        if (m_port == -1) return;
+        if (!m_port) return;
         stop();
         if (m_base) {
             event_base_free(m_base);
@@ -37,7 +36,7 @@ public:
     void start();
     void stop();
 
-    void setPort(const int& port);
+    void setPort(const unsigned short& port);
 };
 
 }

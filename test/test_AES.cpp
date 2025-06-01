@@ -9,8 +9,10 @@ TEST(AESTest, EncryptDecrypt) {
     aesEncrypt.setIV(keyIV);
     aesDecrypt.setKey(keyIV);
     aesDecrypt.setIV(keyIV);
+
     std::vector<unsigned char> encryptedData = aesEncrypt.encryptCFB8(data);
     std::vector<unsigned char> decryptedData = aesDecrypt.decryptCFB8(encryptedData);
+
     EXPECT_EQ(data, decryptedData);
 }
 

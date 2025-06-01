@@ -28,6 +28,7 @@
 #include "LightData.h"
 #include "ChunkData.h"
 #include "XorY.h"
+#include <util/Memory.h>
 #include "nbt/NBTElement.h"
 
 namespace zinc {
@@ -177,7 +178,7 @@ struct ByteBuffer {
         const auto maxBytes = varNumericMaxSize<T>();
         for (size_t i = 0; i < maxBytes; ++i) {
             readByte = m_internalBuffer.read(1);
-            const uint8_t byte = readByte[0];
+            const uint8_t byte = zinc_safe_cast<char, uint8_t>(readByte[0]);
             result |= static_cast<UnsignedT>(byte & 0x7F) << shift;
             if (!(byte & 0x80)) {
                 if constexpr (std::is_signed_v<T>) {
@@ -266,11 +267,11 @@ struct ByteBuffer {
         for (const T& element : value) func(element, *this);
     }
     template<typename T> void writePrefixedArray(const std::vector<T>& value, void(ByteBuffer::*func)(const T&)) {
-        writeVarNumeric<int>(value.size());
+        writeVarNumeric<int>(zinc_safe_cast<size_t, int>(value.size()));
         writeArray(value, func);
     }
     template<typename T> void writePrefixedArray(const std::vector<T>& value, std::function<void(const T&, ByteBuffer&)> func) {
-        writeVarNumeric<int>(value.size());
+        writeVarNumeric<int>(zinc_safe_cast<size_t, int>(value.size()));
         writeArray(value, func);
     }
     template<typename T> std::vector<T> readArray(T(ByteBuffer::*func)(), size_t length) {
@@ -284,10 +285,10 @@ struct ByteBuffer {
         return result;
     }
     template<typename T> std::vector<T> readPrefixedArray(T(ByteBuffer::*func)()) {
-        return readArray(func, readVarNumeric<int>());
+        return readArray(func, zinc_safe_cast<int, size_t>(readVarNumeric<int>()));
     }
     template<typename T> std::vector<T> readPrefixedArray(std::function<T(ByteBuffer&)> func) {
-        return readArray(func, readVarNumeric<int>());
+        return readArray(func, zinc_safe_cast<int, size_t>(readVarNumeric<int>()));
     }
 
     void writeByteArray(const std::vector<char>& bytes);

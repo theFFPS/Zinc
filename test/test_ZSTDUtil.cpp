@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
-#include <util/ZLibUtil.h>
+#include <util/ZSTDUtil.h>
 #include <type/ByteBuffer.h>
 
-TEST(ZLibUtilTest, CompressDecompress) {
+TEST(ZSTDUtilTest, CompressDecompress) {
     zinc::ByteBuffer data;
     data.writeString("Hello World!");
-    zinc::ByteBuffer compressed = zinc::ZLibUtil::compress(data.getBytes());
-    zinc::ByteBuffer decompressed = zinc::ZLibUtil::uncompress(compressed.getBytes(), data.size());
+    zinc::ByteBuffer compressed = zinc::ZSTDUtil::compress(data.getBytes());
+    zinc::ByteBuffer decompressed = zinc::ZSTDUtil::uncompress(compressed.getBytes(), data.size());
     EXPECT_EQ(data.getBytes(), decompressed.getBytes());
 }
 

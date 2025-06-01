@@ -19,7 +19,7 @@ void SrvCtlServer::stop() {
 }
 void SrvCtlServer::setPort(const int& port) {
     m_port = port;
-    m_server.setPort(port);
+    m_server.setPort(zinc_safe_cast<int, unsigned short>(port));
 }
 void SrvCtlServer::addClient(SrvCtlConnection* client) {
     if (!isConnected(client->getTCPConnection().getFd())) m_clients.insert({ client->getTCPConnection().getFd(), client });
@@ -38,7 +38,7 @@ SrvCtlConnection* SrvCtlServer::getClient(evutil_socket_t fd) {
     if (!isConnected(fd)) m_srvCtlLogger.error("Attempted to get unknown client", true); 
     return m_clients[fd];
 }
-void SrvCtlServer::onAccept(evconnlistener* listener, evutil_socket_t fd, struct sockaddr* addr, int socklen, void* ptr) {
+void SrvCtlServer::onAccept(evconnlistener*, evutil_socket_t fd, struct sockaddr* addr, int, void* ptr) {
     bufferevent* bev = bufferevent_socket_new((event_base*) ptr, fd, BEV_OPT_CLOSE_ON_FREE);
     if (!bev) {
         m_srvCtlLogger.error("Failed to create bufferevent");
@@ -53,7 +53,7 @@ void SrvCtlServer::onAccept(evconnlistener* listener, evutil_socket_t fd, struct
     bufferevent_setcb(bev, onRead, nullptr, onEvent, ptr);
     bufferevent_enable(bev, EV_READ);
 }
-void SrvCtlServer::onRead(bufferevent* bev, void* ptr) {
+void SrvCtlServer::onRead(bufferevent* bev, void*) {
     if (!g_srvCtlServer.isConnected(bufferevent_getfd(bev))) return;
     SrvCtlConnection* connection = g_srvCtlServer.getClient(bufferevent_getfd(bev));
     ByteBuffer buffer = connection->getTCPConnection().read();
@@ -111,7 +111,7 @@ void SrvCtlServer::onRead(bufferevent* bev, void* ptr) {
     }
     }
 }
-void SrvCtlServer::onEvent(bufferevent *bev, short events, void *ctx) {
+void SrvCtlServer::onEvent(bufferevent *bev, short events, void *) {
     int fd = bufferevent_getfd(bev);
     m_srvCtlLogger.debug("Event triggered: " + std::to_string(events) + " on fd " + std::to_string(fd));
     if (!g_srvCtlServer.isConnected(bufferevent_getfd(bev))) return;

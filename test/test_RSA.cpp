@@ -9,6 +9,13 @@ TEST(RSATest, EncryptDecrypt) {
     std::vector<unsigned char> decryptedData = rsa.decrypt(encryptedData);
     EXPECT_EQ(inputData, decryptedData);
 }
+TEST(RSATest, SignVerify) {
+    zinc::RSAWrapper rsa;
+    rsa.generateKeys(2048);
+    std::vector<unsigned char> inputData = { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16 };
+    std::vector<unsigned char> signedData = rsa.sign(inputData);
+    EXPECT_TRUE(rsa.verify(inputData, signedData));
+}
 TEST(RSATest, PrivatePEM) {
     zinc::RSAWrapper rsa, rsa2;
     rsa.generateKeys(2048);

@@ -2,23 +2,25 @@
 
 #include <vector>
 #include <string>
+#include <openssl/evp.h>
 #include <openssl/rsa.h>
 
 namespace zinc {
 
 struct RSAWrapper {
 private:
-    RSA* m_rsa;
+    EVP_PKEY* m_pkey = nullptr;
     bool m_isKeyLoaded;
     int m_padding;
 public:
-    RSAWrapper() : m_rsa(RSA_new()), m_isKeyLoaded(false), m_padding(RSA_PKCS1_OAEP_PADDING) {}
-    RSAWrapper(const int& padding) : m_rsa(RSA_new()), m_isKeyLoaded(false), m_padding(padding) {}
+    RSAWrapper() : m_isKeyLoaded(false), m_padding(RSA_PKCS1_OAEP_PADDING) {}
+    RSAWrapper(const int& padding) : m_isKeyLoaded(false), m_padding(padding) {}
     ~RSAWrapper() {
-        if (m_rsa) {
-            RSA_free(m_rsa);
-        }
-    }    
+        if (m_pkey) EVP_PKEY_free(m_pkey);
+    }
+
+    std::vector<unsigned char> sign(const std::vector<unsigned char>& data);
+    bool verify(const std::vector<unsigned char>& data, const std::vector<unsigned char>& signature);
 
     bool generateKeys(int bits = 2048);
 

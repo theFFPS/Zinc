@@ -3,6 +3,7 @@
 #include <ZincConfig.h>
 #include <network/minecraft/ZincServer.h>
 #include <network/srvctl/SrvCtlServer.h>
+#include <loader/ZincMessengerBridge.h>
 #include <util/crypto/CRC32.h>
 #include <thread>
 
@@ -21,6 +22,9 @@ int main(int argc, char **argv) {
         zinc::Logger("Main").info("Starting Zinc server...");
         zinc::g_zincArguments.parse(argc, argv);
         zinc::g_zincConfig.load(zinc::g_zincArguments.m_workDir);
+        zinc::g_zincMessengerBridge.init();
+        // start plugin loader
+        // wait for registry data from plugins
         std::thread t1 (ThreadMain);
         std::thread t2 (ThreadSrvCtl);
         t1.join();

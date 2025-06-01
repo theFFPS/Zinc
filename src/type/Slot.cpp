@@ -16,8 +16,8 @@ std::vector<char> Slot::toBytes() const {
     buffer.writeVarNumeric<int>(m_itemCount);
     if (m_itemCount > 0) {
         buffer.writeVarNumeric<int>(m_itemId);
-        buffer.writeVarNumeric<int>(m_componentsToAdd.size());
-        buffer.writeVarNumeric<int>(m_componentsToRemove.size());
+        buffer.writeVarNumeric<int>(zinc_safe_cast<size_t, int>(m_componentsToAdd.size()));
+        buffer.writeVarNumeric<int>(zinc_safe_cast<size_t, int>(m_componentsToRemove.size()));
         for (const ComponentWrapper& component : m_componentsToAdd) {
             buffer.writeByteArray(component.m_dataAndType);
         }
@@ -31,12 +31,12 @@ std::vector<char> Slot::toBytesHashed() const {
     if (m_itemCount > 0) {
         buffer.writeVarNumeric<int>(m_itemId);
         buffer.writeVarNumeric<int>(m_itemCount);
-        buffer.writeVarNumeric<int>(m_componentsToAdd.size());
+        buffer.writeVarNumeric<int>(zinc_safe_cast<size_t, int>(m_componentsToAdd.size()));
         for (const ComponentWrapper& component : m_componentsToAdd) {
             buffer.writeVarNumeric<int>(component.m_type);
             buffer.writeNumeric<unsigned>(crc32((unsigned char*) component.m_dataAndType.data(), component.m_dataAndType.size()));
         }
-        buffer.writeVarNumeric<int>(m_componentsToRemove.size());
+        buffer.writeVarNumeric<int>(zinc_safe_cast<size_t, int>(m_componentsToRemove.size()));
         for (const int& component : m_componentsToRemove) buffer.writeVarNumeric<int>(component);
     }
     return buffer.getBytes();

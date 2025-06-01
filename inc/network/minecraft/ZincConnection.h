@@ -5,6 +5,7 @@
 #include <util/crypto/AES.h>
 #include <external/UUID.h>
 #include <mutex>
+#include <ZincConfig.h>
 
 namespace zinc {
 
@@ -90,8 +91,10 @@ public:
     void sendPluginMessage(const Identifier& pluginChannel, const std::vector<char>& data);
     void sendPluginMessage(const Identifier& pluginChannel, const ByteBuffer& data);
 
+    void sendDisconnect(const NBTElement& text);
     void sendDisconnect(const TextComponent& text);
     void sendLoginError(const std::string& errorMessage);
+    bool sendBanMessage(const BanData& banData);
 
     int openLoginPluginChannel(const std::string& channel);
     std::string getLoginPluginChannel(const std::vector<unsigned char>& id);

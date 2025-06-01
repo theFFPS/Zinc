@@ -27,7 +27,7 @@ void ByteBuffer::InternalByteBuffer::write(const char* data, const size_t& lengt
         const size_t spaceLeft = (BLOCK_SIZE - m_writeOffset);
         const size_t toCopy = std::min(remaining, spaceLeft);
         std::vector<char>& block = m_blocks[m_writeBlock];
-        std::memcpy(block.data() + m_writeOffset, l_data, toCopy);
+        std::copy(l_data, l_data + toCopy, block.data() + m_writeOffset);
         m_writeOffset += toCopy;
         l_data += toCopy;
         remaining -= toCopy;
@@ -51,7 +51,12 @@ std::vector<char> ByteBuffer::InternalByteBuffer::read(const size_t& length) {
         const std::vector<char>& block = m_blocks[m_readBlock];
         const size_t available = (BLOCK_SIZE - m_readOffset);
         const size_t toCopy = std::min(remaining, available);
-        result.insert(result.end(), block.begin() + m_readOffset, block.begin() + m_readOffset + toCopy);
+        
+        result.insert(
+            result.end(), 
+            block.begin() + zinc_safe_cast<size_t, long>(m_readOffset), 
+            block.begin() + zinc_safe_cast<size_t, long>(m_readOffset + toCopy)
+        );
         m_readOffset += toCopy;
         remaining -= toCopy;
         if (m_readOffset == BLOCK_SIZE) {
@@ -90,7 +95,7 @@ std::vector<char> ByteBuffer::InternalByteBuffer::getBytes() const {
         if (i < m_writeBlock) {
             result.insert(result.end(), m_blocks[i].begin(), m_blocks[i].end());
         } else if (i == m_writeBlock) {
-            result.insert(result.end(), m_blocks[i].begin(), m_blocks[i].begin() + m_writeOffset);
+            result.insert(result.end(), m_blocks[i].begin(), m_blocks[i].begin() + zinc_safe_cast<size_t, long>(m_writeOffset));
             break;
         } else {
             break;
@@ -159,11 +164,11 @@ unsigned char ByteBuffer::readUnsignedByte() {
 }
 
 void ByteBuffer::writeString(const std::string& value) {
-    writeVarNumeric<int>(value.size());
+    writeVarNumeric<int>(zinc_safe_cast<size_t, int>(value.size()));
     writeBytes(std::vector<char>(value.begin(), value.end()));
 }
 std::string ByteBuffer::readString() {
-    std::vector<char> bytes = readBytes(readVarNumeric<int>());
+    std::vector<char> bytes = readBytes(zinc_safe_cast<int, size_t>(readVarNumeric<int>()));
     return std::string(bytes.begin(), bytes.end());
 }
 void ByteBuffer::writeIdentifier(const Identifier& value) {
@@ -208,14 +213,14 @@ void ByteBuffer::writeByteArray(const std::vector<char>& bytes) {
     writeBytes(bytes);
 }
 void ByteBuffer::writePrefixedByteArray(const std::vector<char>& bytes) {
-    writeVarNumeric<int>(bytes.size());
+    writeVarNumeric<int>(zinc_safe_cast<size_t, int>(bytes.size()));
     writeBytes(bytes);
 }
 std::vector<char> ByteBuffer::readByteArray(const size_t& length) {
     return readBytes(length);
 }
 std::vector<char> ByteBuffer::readPrefixedByteArray() {
-    return readBytes(readVarNumeric<int>());
+    return readBytes(zinc_safe_cast<int, size_t>(readVarNumeric<int>()));
 }
 
 void ByteBuffer::writeIDSet(const IDSet& idSet) {
@@ -226,7 +231,7 @@ void ByteBuffer::writeIDSet(const IDSet& idSet) {
 IDSet ByteBuffer::readIDSet() {
     IDSet result;
     result.setType(readVarNumeric<int>());
-    if (result.getType()) result.setIDs(readArray<int>(&ByteBuffer::readVarNumeric<int>, result.getType() - 1));
+    if (result.getType()) result.setIDs(readArray<int>(&ByteBuffer::readVarNumeric<int>, zinc_safe_cast<int, size_t>(result.getType() - 1)));
     else result.setIdentifier(readIdentifier());
     return result;
 }
@@ -257,12 +262,17 @@ Vector3i ByteBuffer::readBlockCoordinates() {
 
 void ByteBuffer::writePlayerLocation(const PlayerLocation& playerLocation) {
     writeVector3(playerLocation.getPosition());
-    writeByte((unsigned char)(playerLocation.getPitch() * 0.71));
-    writeByte((unsigned char)(playerLocation.getHeadYaw() * 0.71));
-    writeByte((unsigned char)(playerLocation.getYaw() * 0.71));
+    writeByte(zinc_safe_cast<double, char>(playerLocation.getPitch() * 0.71));
+    writeByte(zinc_safe_cast<double, char>(playerLocation.getHeadYaw() * 0.71));
+    writeByte(zinc_safe_cast<double, char>(playerLocation.getYaw() * 0.71));
 }
 PlayerLocation ByteBuffer::readPlayerLocation() {
-    return PlayerLocation(readVector3(), (float)(readByte()) / 0.71, (float)(readByte()) / 0.71, (float)(readByte()) / 0.71);
+    return PlayerLocation(
+        readVector3(), 
+        zinc_safe_cast<double, float>(zinc_safe_cast<char, double>(readByte()) / 0.71), 
+        zinc_safe_cast<double, float>(zinc_safe_cast<char, double>(readByte()) / 0.71), 
+        zinc_safe_cast<double, float>(zinc_safe_cast<char, double>(readByte()) / 0.71)
+    );
 }
 
 void ByteBuffer::writeSoundEvent(const SoundEvent& soundEvent) {
@@ -535,15 +545,15 @@ LightData ByteBuffer::readLightData() {
 }
 
 void ByteBuffer::writeChunkData(const ChunkData& data) {
-    writeVarNumeric<int>(data.m_heightMaps.size());
+    writeVarNumeric<int>(zinc_safe_cast<size_t, int>(data.m_heightMaps.size()));
     for (const ChunkDataHeightMap& heightMap : data.m_heightMaps) {
         writeVarNumeric<int>(heightMap.m_type);
         writePrefixedArray<long>(heightMap.m_data, &ByteBuffer::writeNumeric<long>);
     }
     writePrefixedByteArray(data.m_data);
-    writeVarNumeric<int>(data.m_blockEntities.size());
+    writeVarNumeric<int>(zinc_safe_cast<size_t, int>(data.m_blockEntities.size()));
     for (const ChunkDataBlockEntity& blockEntity : data.m_blockEntities) {
-        writeUnsignedByte(((blockEntity.m_x & 15) << 4) | (blockEntity.m_z & 15));
+        writeUnsignedByte(zinc_safe_cast<int, uint8_t>(((blockEntity.m_x & 15) << 4) | (blockEntity.m_z & 15)));
         writeNumeric<short>(blockEntity.m_y);
         writeVarNumeric<int>(blockEntity.m_blockEntityTypeInt);
         writeNBTElement(blockEntity.m_data);

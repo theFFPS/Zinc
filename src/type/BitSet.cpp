@@ -1,10 +1,11 @@
 #include <type/BitSet.h>
+#include <util/Memory.h>
 
 namespace zinc {
 
 unsigned long BitSet::findHighestSet() const {
     for (unsigned long i = m_data.size(); i-- > 0;) {
-        if (m_data[i] != 0) return i * 64 + (63 - __builtin_clzll(m_data[i]));
+        if (m_data[i] != 0) return i * 64 + zinc_safe_cast<int, size_t>(63 - __builtin_clzll(m_data[i]));
     }
     return NPOS;
 }
@@ -42,7 +43,7 @@ unsigned long BitSet::size() const {
 unsigned long BitSet::count() const {
     unsigned long total = 0;
     for (unsigned long block : m_data) {
-        total += __builtin_popcountll(block);
+        total += zinc_safe_cast<int, size_t>(__builtin_popcountll(block));
     }
     return total;
 }
@@ -58,7 +59,8 @@ unsigned long BitSet::nextSetBit(unsigned long fromIndex) const {
     unsigned long bit_offset = fromIndex % 64;
     while (block_idx < m_data.size()) {
         if (m_data[block_idx]) {
-            if (m_data[block_idx] >> bit_offset) return block_idx * 64 + bit_offset + __builtin_ctzll(m_data[block_idx] >> bit_offset);
+            if (m_data[block_idx] >> bit_offset) return block_idx * 64 + bit_offset 
+                + zinc_safe_cast<int, size_t>(__builtin_ctzll(m_data[block_idx] >> bit_offset));
         }
         ++block_idx;
         bit_offset = 0;
@@ -70,7 +72,7 @@ unsigned long BitSet::nextClearBit(unsigned long fromIndex) const {
     unsigned long bit_offset = fromIndex % 64;
     while (block_idx < m_data.size()) {
         if ((~m_data[block_idx]) & (~((1ULL << bit_offset) - 1))) 
-            return block_idx * 64 + __builtin_ctzll((~m_data[block_idx]) & (~((1ULL << bit_offset) - 1)));
+            return block_idx * 64 + zinc_safe_cast<int, size_t>(__builtin_ctzll((~m_data[block_idx]) & (~((1ULL << bit_offset) - 1))));
         ++block_idx;
         bit_offset = 0;
     }
@@ -116,14 +118,14 @@ bool BitSet::operator!=(const BitSet& other) const {
 
 std::vector<unsigned long> BitSet::toLongArray() const {
     if (m_highestSet == NPOS) return {};
-    return std::vector<unsigned long>(m_data.begin(), m_data.begin() + (m_highestSet / 64) + 1);
+    return std::vector<unsigned long>(m_data.begin(), m_data.begin() + zinc_safe_cast<size_t, long>(m_highestSet / 64) + 1);
 }
 std::vector<unsigned char> BitSet::toByteArray() const {
     if (m_highestSet == NPOS) return {};
     std::vector<unsigned char> bytes((m_highestSet + 7) / 8, 0);
     for (unsigned long i = 0; i < (m_highestSet + 7) / 8; ++i) {
         unsigned char byte = 0;
-        for (int j = 0; j < 8; ++j) {
+        for (size_t j = 0; j < 8; ++j) {
             if (get(i * 8 + j)) byte |= (1 << j);
         }
         bytes[i] = byte;

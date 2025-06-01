@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <util/Memory.h>
 #include "Identifier.h"
 
 namespace zinc {
@@ -13,7 +14,7 @@ private:
 public:
     IDSet() : m_type(-1) {}
     IDSet(const Identifier& identifier) : m_type(0), m_identifier(identifier) {}
-    IDSet(const std::vector<int>& ids) : m_type(ids.size() + 1), m_ids(ids) {}
+    IDSet(const std::vector<int>& ids) : m_type(zinc_safe_cast<size_t, int>(ids.size() + 1)), m_ids(ids) {}
 
     void setIdentifier(const Identifier& identifier);
     void setIDs(const std::vector<int>& ids);
