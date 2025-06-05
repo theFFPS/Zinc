@@ -139,6 +139,7 @@ void ZincConfig::load(const std::string& workdir) {
             }
         }
         if (coreSettings.contains("features")) {
+            m_core.m_features.clear();
             for (const auto& feature : coreSettings["features"]) {
                 m_core.m_features.push_back(feature);
             }

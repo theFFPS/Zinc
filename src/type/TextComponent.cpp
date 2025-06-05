@@ -257,7 +257,6 @@ void TextComponent::decode(ByteBuffer& buffer) {
 void TextComponent::decode(const NBTElement& element) {
     std::string typeString;
     for (const NBTElement& subelement : element.m_childElements) {
-        if (subelement.m_tag == "type") typeString = subelement.m_stringValue;
         if (subelement.m_tag == "extra") {
             for (const NBTElement& text : subelement.m_childElements) {
                 TextComponent textComponent;
@@ -267,6 +266,7 @@ void TextComponent::decode(const NBTElement& element) {
                 m_extra.push_back(textComponent);
             }
         }
+        if (subelement.m_tag == "type") typeString = subelement.m_stringValue;
         if (subelement.m_tag == "color") m_color = subelement.m_stringValue;
         if (subelement.m_tag == "font") m_font = subelement.m_stringValue;
         if (subelement.m_tag == "bold") m_bold = subelement.m_byteValue;

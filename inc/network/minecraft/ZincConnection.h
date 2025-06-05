@@ -59,6 +59,7 @@ public:
     ZincConnectionInfo m_info;
     int m_kickAtLogin = 0;
     bool m_loginFinished = false;
+    bool m_shouldContinue = true;
     std::mutex m_mutex;
 
     ZincConnection() : m_tcpConnection(TCPConnection()), m_state(State::Handshake) {}

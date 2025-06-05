@@ -23,8 +23,7 @@ int main(int argc, char **argv) {
         zinc::g_zincArguments.parse(argc, argv);
         zinc::g_zincConfig.load(zinc::g_zincArguments.m_workDir);
         zinc::g_zincMessengerBridge.init();
-        // start plugin loader
-        // wait for registry data from plugins
+        // start plugin loader (and load assets)
         std::thread t1 (ThreadMain);
         std::thread t2 (ThreadSrvCtl);
         t1.join();

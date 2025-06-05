@@ -1,8 +1,10 @@
 #include "type/Identifier.h"
+#include "type/TextComponent.h"
 #include "type/nbt/NBTElement.h"
 #include "util/Memory.h"
 #include <registry/DefaultRegistries.h>
 #include <network/minecraft/channels/BrandChannel.h>
+#include <string>
 #include <type/ByteBuffer.h>
 
 namespace zinc {
@@ -29,492 +31,143 @@ ByteBuffer getNetworkRegistry(const std::vector<std::string>& registryData, cons
     return result;
 }
 
-std::unordered_map<std::string, NBTElement> g_trimMaterial = {
-    { "minecraft:amethyst", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:amethyst"),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.amethyst"), 
-            NBTElement::String("color", "#9A5CC6")
-        })
-    }) },
-    { "minecraft:copper", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:copper"),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.copper"),
-            NBTElement::String("color", "#B4684D")
-        })
-    }) },
-    { "minecraft:diamond", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:diamond"),
+// START BUILTIN DATA GENERATORS
+std::pair<std::string, NBTElement> builtinPainitingData(const std::string& id, int width, int height, bool hasAuthor = true) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::String("asset_id", "minecraft:" + id),
+        NBTElement::Compound("title", 
+            TextComponentBuilder().translatable(TextComponentBuilder::TranslatableBuilder()
+                .translate("painting.minecraft." + id + ".title").build()).color("yellow")
+                .build().encode().m_childElements
+        ),
+        (hasAuthor ? NBTElement::Compound("author", TextComponentBuilder()
+                .translatable(TextComponentBuilder::TranslatableBuilder()
+                .translate("painting.minecraft." + id + ".author").build()).color("gray")
+                .build().encode().m_childElements), 
+            NBTElement::Int("width", width) : NBTElement::Int("width", width) ),
+        NBTElement::Int("height", height),
+    }) };
+}
+std::pair<std::string, NBTElement> builtinMobVariantData(const std::string& id, const std::string& variant) {
+    return { variant, NBTElement::Compound({
+        NBTElement::String("asset_id", "minecraft:entity/" + id + "/" + variant)
+    }) };
+}
+std::pair<std::string, NBTElement> builtinMobVariantData(const std::string& id, int variant) {
+    return builtinMobVariantData(id, (variant < 0 ? "cold_" + id : (
+        variant > 0 ? "warm_" + id : "temperate_" + id
+    )));
+}
+std::unordered_map<std::string, NBTElement> builtinTemperatureMobVariantData(const std::string& id) {
+    return {
+        builtinMobVariantData(id, -1),
+        builtinMobVariantData(id, 0),
+        builtinMobVariantData(id, 1)
+    };
+}
+std::pair<std::string, NBTElement> builtinTrimMaterialData(const std::string& id, const std::string& color) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::String("asset_name", "minecraft:" + id),
+        NBTElement::Compound("description", TextComponentBuilder()
+            .translatable(TextComponentBuilder::TranslatableBuilder()
+                .translate("trim_material.minecraft." + id).build()).color("#" + color)
+                .build().encode().m_childElements
+        )
+    }) };
+}
+std::pair<std::string, NBTElement> builtinTrimMaterialData(const std::string& id, const std::string& color, const std::string& override) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::String("asset_name", "minecraft:" + id),
         NBTElement::Compound("override_armor_assets", {
-            NBTElement::String("minecraft:diamond", "diamond_darker")
+            NBTElement::String("minecraft:" + override, id + "_darker")
         }),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.diamond"),
-            NBTElement::String("color", "#6EECD2")
+        NBTElement::Compound("description", TextComponentBuilder()
+            .translatable(TextComponentBuilder::TranslatableBuilder()
+                .translate("trim_material.minecraft." + id).build()).color("#" + color)
+                .build().encode().m_childElements
+            )
+    }) };
+}
+std::pair<std::string, NBTElement> builtinTrimPatternData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::String("asset_id", "minecraft:" + id),
+        NBTElement::Compound("description", TextComponentBuilder()
+            .translatable(TextComponentBuilder::TranslatableBuilder()
+                .translate("trim_pattern.minecraft." + id).build()).build().encode().m_childElements
+        ),
+        NBTElement::Byte("decal", false)
+    }) };
+}
+std::pair<std::string, NBTElement> builtinBannerPatternData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::String("asset_id", "minecraft:" + id),
+        NBTElement::String("translation_key", "block.minecraft.banner." + id)
+    }) };
+}
+std::pair<std::string, NBTElement> builtinEndBiomeData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::Byte("has_precipitation", false),
+        NBTElement::Float("temperature", 0.5f),
+        NBTElement::Float("downfall", 0.5f),
+        NBTElement::Compound("effects", {
+            NBTElement::Compound("mood_sound", {
+                NBTElement::String("sound", "minecraft:ambient.cave"),
+                NBTElement::Int("tick_delay", 6000),
+                NBTElement::Int("block_search_extent", 8),
+                NBTElement::Double("offset", 2.0)
+            }),
+            NBTElement::Int("sky_color", 0),
+            NBTElement::Int("fog_color", 10518688),
+            NBTElement::Int("water_color", 4159204),
+            NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:iron", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:iron"),
-        NBTElement::Compound("override_armor_assets", {
-            NBTElement::String("minecraft:iron", "iron_darker")
-        }),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.iron"),
-            NBTElement::String("color", "#ECECEC")
+    }) };
+}
+std::pair<std::string, NBTElement> builtinDesertBiomeData(const std::string& id, bool enableMusic) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::Byte("has_precipitation", false),
+        NBTElement::Float("temperature", 2.0f),
+        NBTElement::Float("downfall", 0.0f),
+        NBTElement::Compound("effects", {
+            NBTElement::Compound("mood_sound", {
+                NBTElement::String("sound", "minecraft:ambient.cave"),
+                NBTElement::Int("tick_delay", 6000),
+                NBTElement::Int("block_search_extent", 8),
+                NBTElement::Double("offset", 2.0)
+            }),
+            (enableMusic ? NBTElement::Compound("music", {
+                NBTElement::String("sound", "minecraft:music.overworld.desert"),
+                NBTElement::Int("min_delay", 12000),
+                NBTElement::Int("max_delay", 24000),
+                NBTElement::Byte("replace_current_music", false)
+            }), NBTElement::Int("sky_color", 7254527) : NBTElement::Int("sky_color", 7254527)),
+            NBTElement::Int("fog_color", 12638463),
+            NBTElement::Int("water_color", 4159204),
+            NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:gold", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:gold"),
-        NBTElement::Compound("override_armor_assets", {
-            NBTElement::String("minecraft:gold", "gold_darker")
-        }),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.gold"),
-            NBTElement::String("color", "#DEB12D")
+    }) };
+}
+std::pair<std::string, NBTElement> builtinWindsweptBiomeData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::Byte("has_precipitation", true),
+        NBTElement::Float("temperature", 0.2f),
+        NBTElement::Float("downfall", 0.3f),
+        NBTElement::Compound("effects", {
+            NBTElement::Compound("mood_sound", {
+                NBTElement::String("sound", "minecraft:ambient.cave"),
+                NBTElement::Int("tick_delay", 6000),
+                NBTElement::Int("block_search_extent", 8),
+                NBTElement::Double("offset", 2.0)
+            }),
+            NBTElement::Int("sky_color", 8233727),
+            NBTElement::Int("fog_color", 12638463),
+            NBTElement::Int("water_color", 4159204),
+            NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:netherite", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:netherite"),
-        NBTElement::Compound("override_armor_assets", {
-            NBTElement::String("minecraft:netherite", "netherite_darker")
-        }),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.netherite"),
-            NBTElement::String("color", "#625859")
-        })
-    }) },
-    { "minecraft:lapis", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:lapis"),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.lapis"),
-            NBTElement::String("color", "#416E97")
-        })
-    }) },
-    { "minecraft:quartz", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:quartz"),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.quartz"),
-            NBTElement::String("color", "#E3D4C4")
-        })
-    }) },
-    { "minecraft:redstone", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:redstone"),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.redstone"),
-            NBTElement::String("color", "#971607")
-        })
-    }) },
-    { "minecraft:resin", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:resin"),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.resin"),
-            NBTElement::String("color", "#FC7812")
-        })
-    }) },
-    { "minecraft:emerald", NBTElement::Compound({
-        NBTElement::String("asset_name", "minecraft:emerald"),
-        NBTElement::Compound("description", {
-            NBTElement::String("type", "translatable"),
-            NBTElement::String("translate", "trim_material.minecraft.emerald"),
-            NBTElement::String("color", "#11A036")
-        })
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_trimPattern = {
-    { "minecraft:bolt", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:bolt"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.bolt") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:coast", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:coast"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.coast") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:dune", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:dune"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.dune") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:eye", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:eye"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.eye") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:flow", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:flow"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.flow") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:host", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:host"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.host") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:raiser", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:raiser"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.raiser") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:rib", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:rib"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.rib") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:sentry", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:sentry"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.sentry") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:shaper", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:shaper"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.shaper") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:silence", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:silence"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.silence") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:snout", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:snout"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.snout") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:spire", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:spire"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.spire") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:tide", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:tide"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.tide") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:vex", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:vex"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.vex") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:ward", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:ward"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.ward") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:wayfinder", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:wayfinder"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.wayfinder") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) },
-    { "minecraft:wild", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:wild"),
-        NBTElement::Compound("description", { 
-            NBTElement::String("type", "translatable"), NBTElement::String("translate", "trim_pattern.minecraft.wild") 
-        }),
-        NBTElement::Byte("decal", false)
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_bannerPattern = {
-    { "minecraft:base", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:base"),
-        NBTElement::String("translation_key", "block.minecraft.banner.base")
-    }) },
-    { "minecraft:border", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:border"),
-        NBTElement::String("translation_key", "block.minecraft.banner.border")
-    }) },
-    { "minecraft:bricks", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:bricks"),
-        NBTElement::String("translation_key", "block.minecraft.banner.bricks")
-    }) },
-    { "minecraft:circle", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:circle"),
-        NBTElement::String("translation_key", "block.minecraft.banner.circle")
-    }) },
-    { "minecraft:creeper", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:creeper"),
-        NBTElement::String("translation_key", "block.minecraft.banner.creeper")
-    }) },
-    { "minecraft:cross", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:cross"),
-        NBTElement::String("translation_key", "block.minecraft.banner.cross")
-    }) },
-    { "minecraft:curly_border", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:curly_border"),
-        NBTElement::String("translation_key", "block.minecraft.banner.curly_border")
-    }) },
-    { "minecraft:diagonal_left", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:diagonal_left"),
-        NBTElement::String("translation_key", "block.minecraft.banner.diagonal_left")
-    }) },
-    { "minecraft:diagonal_right", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:diagonal_right"),
-        NBTElement::String("translation_key", "block.minecraft.banner.diagonal_right")
-    }) },
-    { "minecraft:diagonal_left_up", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:diagonal_left_up"),
-        NBTElement::String("translation_key", "block.minecraft.banner.diagonal_left_up")
-    }) },
-    { "minecraft:diagonal_right_up", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:diagonal_right_up"),
-        NBTElement::String("translation_key", "block.minecraft.banner.diagonal_right_up")
-    }) },
-    { "minecraft:flow", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:flow"),
-        NBTElement::String("translation_key", "block.minecraft.banner.flow")
-    }) },
-    { "minecraft:flower", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:flower"),
-        NBTElement::String("translation_key", "block.minecraft.banner.flower")
-    }) },
-    { "minecraft:globe", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:globe"),
-        NBTElement::String("translation_key", "block.minecraft.banner.globe")
-    }) },
-    { "minecraft:gradient", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:gradient"),
-        NBTElement::String("translation_key", "block.minecraft.banner.gradient")
-    }) },
-    { "minecraft:gradient_up", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:gradient_up"),
-        NBTElement::String("translation_key", "block.minecraft.banner.gradient_up")
-    }) },
-    { "minecraft:guster", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:guster"),
-        NBTElement::String("translation_key", "block.minecraft.banner.guster")
-    }) },
-    { "minecraft:half_horizontal", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:half_horizontal"),
-        NBTElement::String("translation_key", "block.minecraft.banner.half_horizontal")
-    }) },
-    { "minecraft:half_horizontal_bottom", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:half_horizontal_bottom"),
-        NBTElement::String("translation_key", "block.minecraft.banner.half_horizontal_bottom")
-    }) },
-    { "minecraft:half_vertical", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:half_vertical"),
-        NBTElement::String("translation_key", "block.minecraft.banner.half_vertical")
-    }) },
-    { "minecraft:half_vertical_right", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:half_vertical_right"),
-        NBTElement::String("translation_key", "block.minecraft.banner.half_vertical_right")
-    }) },
-    { "minecraft:mojang", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:mojang"),
-        NBTElement::String("translation_key", "block.minecraft.banner.mojang")
-    }) },
-    { "minecraft:piglin", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:piglin"),
-        NBTElement::String("translation_key", "block.minecraft.banner.piglin")
-    }) },
-    { "minecraft:rhombus", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:rhombus"),
-        NBTElement::String("translation_key", "block.minecraft.banner.rhombus")
-    }) },
-    { "minecraft:skull", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:skull"),
-        NBTElement::String("translation_key", "block.minecraft.banner.skull")
-    }) },
-    { "minecraft:small_stripes", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:small_stripes"),
-        NBTElement::String("translation_key", "block.minecraft.banner.small_stripes")
-    }) },
-    { "minecraft:square_bottom_left", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:square_bottom_left"),
-        NBTElement::String("translation_key", "block.minecraft.banner.square_bottom_left")
-    }) },
-    { "minecraft:square_bottom_right", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:square_bottom_right"),
-        NBTElement::String("translation_key", "block.minecraft.banner.square_bottom_right")
-    }) },
-    { "minecraft:square_top_left", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:square_top_left"),
-        NBTElement::String("translation_key", "block.minecraft.banner.square_top_left")
-    }) },
-    { "minecraft:square_top_right", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:square_top_right"),
-        NBTElement::String("translation_key", "block.minecraft.banner.square_top_right")
-    }) },
-    { "minecraft:straight_cross", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:straight_cross"),
-        NBTElement::String("translation_key", "block.minecraft.banner.straight_cross")
-    }) },
-    { "minecraft:stripe_bottom", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:stripe_bottom"),
-        NBTElement::String("translation_key", "block.minecraft.banner.stripe_bottom")
-    }) },
-    { "minecraft:stripe_center", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:stripe_center"),
-        NBTElement::String("translation_key", "block.minecraft.banner.stripe_center")
-    }) },
-    { "minecraft:stripe_downleft", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:stripe_downleft"),
-        NBTElement::String("translation_key", "block.minecraft.banner.stripe_downleft")
-    }) },
-    { "minecraft:stripe_downright", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:stripe_downright"),
-        NBTElement::String("translation_key", "block.minecraft.banner.stripe_downright")
-    }) },
-    { "minecraft:stripe_left", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:stripe_left"),
-        NBTElement::String("translation_key", "block.minecraft.banner.stripe_left")
-    }) },
-    { "minecraft:stripe_middle", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:stripe_middle"),
-        NBTElement::String("translation_key", "block.minecraft.banner.stripe_middle")
-    }) },
-    { "minecraft:stripe_right", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:stripe_right"),
-        NBTElement::String("translation_key", "block.minecraft.banner.stripe_right")
-    }) },
-    { "minecraft:stripe_top", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:stripe_top"),
-        NBTElement::String("translation_key", "block.minecraft.banner.stripe_top")
-    }) },
-    { "minecraft:triangle_bottom", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:triangle_bottom"),
-        NBTElement::String("translation_key", "block.minecraft.banner.triangle_bottom")
-    }) },
-    { "minecraft:triangle_top", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:triangle_top"),
-        NBTElement::String("translation_key", "block.minecraft.banner.triangle_top")
-    }) },
-    { "minecraft:triangles_bottom", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:triangles_bottom"),
-        NBTElement::String("translation_key", "block.minecraft.banner.triangles_bottom")
-    }) },
-    { "minecraft:triangles_top", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:triangles_top"),
-        NBTElement::String("translation_key", "block.minecraft.banner.triangles_top")
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_chatType = {
-    { "minecraft:chat", NBTElement::Compound({
-        NBTElement::Compound("chat", {
-            NBTElement::String("translation_key", "chat.type.text"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        }),
-        NBTElement::Compound("narration", {
-            NBTElement::String("translation_key", "chat.type.text.narrate"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        })
-    }) },
-    { "minecraft:emote_command", NBTElement::Compound({
-        NBTElement::Compound("chat", {
-            NBTElement::String("translation_key", "chat.type.emote"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        }),
-        NBTElement::Compound("narration", {
-            NBTElement::String("translation_key", "chat.type.emote"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        })
-    }) },
-    { "minecraft:msg_command_incoming", NBTElement::Compound({
-        NBTElement::Compound("chat", {
-            NBTElement::String("translation_key", "commands.message.display.incoming"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") }),
-            NBTElement::Compound("style", {
-                NBTElement::Byte("italic", false),
-                NBTElement::String("color", "gray")
-            })
-        }),
-        NBTElement::Compound("narration", {
-            NBTElement::String("translation_key", "chat.type.text.narrate"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        })
-    }) },
-    { "minecraft:msg_command_outgoing", NBTElement::Compound({
-        NBTElement::Compound("chat", {
-            NBTElement::String("translation_key", "commands.message.display.outgoing"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") }),
-            NBTElement::Compound("style", {
-                NBTElement::Byte("italic", false),
-                NBTElement::String("color", "gray")
-            })
-        }),
-        NBTElement::Compound("narration", {
-            NBTElement::String("translation_key", "chat.type.text.narrate"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        })
-    }) },
-    { "minecraft:say_command", NBTElement::Compound({
-        NBTElement::Compound("chat", {
-            NBTElement::String("translation_key", "chat.type.announcement"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        }),
-        NBTElement::Compound("narration", {
-            NBTElement::String("translation_key", "chat.type.text.narrate"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        })
-    }) },
-    { "minecraft:team_msg_command_incoming", NBTElement::Compound({
-        NBTElement::Compound("chat", {
-            NBTElement::String("translation_key", "chat.type.team.text"),
-            NBTElement::List("parameters", { NBTElement::String("target"), NBTElement::String("sender"), NBTElement::String("content") })
-        }),
-        NBTElement::Compound("narration", {
-            NBTElement::String("translation_key", "chat.type.text.narrate"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        })
-    }) },
-    { "minecraft:team_msg_command_outgoing", NBTElement::Compound({
-        NBTElement::Compound("chat", {
-            NBTElement::String("translation_key", "chat.type.team.sent"),
-            NBTElement::List("parameters", { NBTElement::String("target"), NBTElement::String("sender"), NBTElement::String("content") })
-        }),
-        NBTElement::Compound("narration", {
-            NBTElement::String("translation_key", "chat.type.text.narrate"),
-            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
-        })
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_biome = {
-    { "minecraft:badlands", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinBadlandsBiomeData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", false),
         NBTElement::Float("temperature", 2.0f),
         NBTElement::Float("downfall", 0.0f),
@@ -538,11 +191,14 @@ std::unordered_map<std::string, NBTElement> g_biome = {
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:bamboo_jungle", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinOceanBiomeData(const std::string& id, int waterColor, int waterFogColor, bool isFrozen) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.95f),
-        NBTElement::Float("downfall", 0.9f),
+        NBTElement::Float("temperature", 0.5f),
+        (isFrozen ? NBTElement::String("temperature_modifier", "frozen"), NBTElement::Float("downfall", 0.5f) 
+            : NBTElement::Float("downfall", 0.5f)),
         NBTElement::Compound("effects", {
             NBTElement::Compound("mood_sound", {
                 NBTElement::String("sound", "minecraft:ambient.cave"),
@@ -550,53 +206,51 @@ std::unordered_map<std::string, NBTElement> g_biome = {
                 NBTElement::Int("block_search_extent", 8),
                 NBTElement::Double("offset", 2.0)
             }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.bamboo_jungle"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7842047),
+            NBTElement::Int("sky_color", 8103167),
             NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
+            NBTElement::Int("water_color", waterColor),
+            NBTElement::Int("water_fog_color", waterFogColor)
         })
-    }) },
-    { "minecraft:basalt_deltas", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinNetherBiomeData(const std::string& id, float particleProbability, const std::string& particle) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", false),
         NBTElement::Float("temperature", 2.0f),
         NBTElement::Float("downfall", 0.0f),
         NBTElement::Compound("effects", {
             NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.basalt_deltas.mood"),
+                NBTElement::String("sound", "minecraft:ambient." + id + ".mood"),
                 NBTElement::Int("tick_delay", 6000),
                 NBTElement::Int("block_search_extent", 8),
                 NBTElement::Double("offset", 2.0)
             }),
             NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.nether.basalt_deltas"),
+                NBTElement::String("sound", "minecraft:music.nether." + id),
                 NBTElement::Int("min_delay", 12000),
                 NBTElement::Int("max_delay", 24000),
                 NBTElement::Byte("replace_current_music", false)
             }),
             NBTElement::Compound("additions_sound", {
-                NBTElement::String("sound", "minecraft:ambient.basalt_deltas.additions"),
+                NBTElement::String("sound", "minecraft:ambient." + id + ".additions"),
                 NBTElement::Double("tick_chance", 0.0111)
             }),
-            NBTElement::Compound("particle", {
+            (particleProbability >= 0 ? NBTElement::Compound("particle", {
                 NBTElement::Compound("options", {
-                    NBTElement::String("type", "minecraft:white_ash")
+                    NBTElement::String("type", "minecraft:" + particle)
                 }),
-                NBTElement::Float("probability", 0.118093334f)
-            }),
-            NBTElement::String("ambient_sound", "minecraft:ambient.basalt_deltas.loop"),
+                NBTElement::Float("probability", particleProbability)
+            }), NBTElement::String("ambient_sound", "minecraft:ambient." + id + ".loop") 
+                : NBTElement::String("ambient_sound", "minecraft:ambient." + id + ".loop")),
             NBTElement::Int("sky_color", 7254527),
             NBTElement::Int("fog_color", 6840176),
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:beach", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinPlainsBiomeData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
         NBTElement::Float("temperature", 0.8f),
         NBTElement::Float("downfall", 0.4f),
@@ -612,149 +266,10 @@ std::unordered_map<std::string, NBTElement> g_biome = {
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:birch_forest", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.6f),
-        NBTElement::Float("downfall", 0.6f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.forest"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8037887),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:cherry_grove", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.cherry_grove"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("foliage_color", 11983713),
-            NBTElement::Int("grass_color", 11983713),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 6141935),
-            NBTElement::Int("water_fog_color", 6141935)
-        })
-    }) },
-    { "minecraft:cold_ocean", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4020182),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:crimson_forest", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.crimson_forest.mood"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.nether.crimson_forest"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Compound("additions_sound", {
-                NBTElement::String("sound", "minecraft:ambient.crimson_forest.additions"),
-                NBTElement::Double("tick_chance", 0.0111)
-            }),
-            NBTElement::Compound("particle", {
-                NBTElement::Compound("options", {
-                    NBTElement::String("type", "minecraft:crimson_spore")
-                }),
-                NBTElement::Float("probability", 0.025f)
-            }),
-            NBTElement::String("ambient_sound", "minecraft:ambient.crimson_forest.loop"),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("fog_color", 3343107),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:dark_forest", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.7f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.dark_forest"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::String("grass_color_modifier", "dark_forest"),
-            NBTElement::Int("sky_color", 7972607),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("dry_foliage_color", 8082228),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:deep_cold_ocean", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4020182),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:deep_dark", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinCaveBiomeData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
         NBTElement::Float("temperature", 0.8f),
         NBTElement::Float("downfall", 0.4f),
@@ -766,7 +281,7 @@ std::unordered_map<std::string, NBTElement> g_biome = {
                 NBTElement::Double("offset", 2.0)
             }),
             NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.deep_dark"),
+                NBTElement::String("sound", "minecraft:music.overworld." + id),
                 NBTElement::Int("min_delay", 12000),
                 NBTElement::Int("max_delay", 24000),
                 NBTElement::Byte("replace_current_music", false)
@@ -776,352 +291,13 @@ std::unordered_map<std::string, NBTElement> g_biome = {
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:deep_frozen_ocean", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::String("temperature_modifier", "frozen"),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 3750089),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:deep_lukewarm_ocean", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4566514),
-            NBTElement::Int("water_fog_color", 267827)
-        })
-    }) },
-    { "minecraft:deep_ocean", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:desert", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.desert"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:dripstone_caves", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.8f),
-        NBTElement::Float("downfall", 0.4f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.dripstone_caves"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7907327),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:end_barrens", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 0),
-            NBTElement::Int("fog_color", 10518688),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:end_highlands", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 0),
-            NBTElement::Int("fog_color", 10518688),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:end_midlands", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 0),
-            NBTElement::Int("fog_color", 10518688),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:eroded_badlands", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.eroded_badlands"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("foliage_color", 10387789),
-            NBTElement::Int("grass_color", 9470285),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:flower_forest", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.7f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.flower_forest"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7972607),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:forest", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.7f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.forest"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7972607),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:frozen_ocean", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::String("temperature_modifier", "frozen"),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8364543),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 3750089),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:frozen_peaks", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", -0.7f),
-        NBTElement::Float("downfall", 0.9f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.frozen_peaks"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8756735),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:frozen_river", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.0f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8364543),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 3750089),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:grove", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", -0.2f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.grove"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8495359),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:ice_spikes", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.0f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8364543),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:jagged_peaks", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", -0.7f),
-        NBTElement::Float("downfall", 0.9f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.jagged_peaks"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8756735),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:jungle", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinJungleBiomeData(const std::string& id, float downfall) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
         NBTElement::Float("temperature", 0.95f),
-        NBTElement::Float("downfall", 0.9f),
+        NBTElement::Float("downfall", downfall),
         NBTElement::Compound("effects", {
             NBTElement::Compound("mood_sound", {
                 NBTElement::String("sound", "minecraft:ambient.cave"),
@@ -1130,7 +306,7 @@ std::unordered_map<std::string, NBTElement> g_biome = {
                 NBTElement::Double("offset", 2.0)
             }),
             NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.jungle"),
+                NBTElement::String("sound", "minecraft:music.overworld." + id),
                 NBTElement::Int("min_delay", 12000),
                 NBTElement::Int("max_delay", 24000),
                 NBTElement::Byte("replace_current_music", false)
@@ -1140,28 +316,13 @@ std::unordered_map<std::string, NBTElement> g_biome = {
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:lukewarm_ocean", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinPeaksBiomeData(const std::string& id, float downfall, float temperature, int skyColor) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4566514),
-            NBTElement::Int("water_fog_color", 267827)
-        })
-    }) },
-    { "minecraft:lush_caves", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
+        NBTElement::Float("temperature", temperature),
+        NBTElement::Float("downfall", downfall),
         NBTElement::Compound("effects", {
             NBTElement::Compound("mood_sound", {
                 NBTElement::String("sound", "minecraft:ambient.cave"),
@@ -1170,152 +331,20 @@ std::unordered_map<std::string, NBTElement> g_biome = {
                 NBTElement::Double("offset", 2.0)
             }),
             NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.lush_caves"),
+                NBTElement::String("sound", "minecraft:music.overworld." + id),
                 NBTElement::Int("min_delay", 12000),
                 NBTElement::Int("max_delay", 24000),
                 NBTElement::Byte("replace_current_music", false)
             }),
-            NBTElement::Int("sky_color", 8103167),
+            NBTElement::Int("sky_color", skyColor),
             NBTElement::Int("fog_color", 12638463),
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:mangrove_swamp", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.8f),
-        NBTElement::Float("downfall", 0.9f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.swamp"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::String("grass_color_modifier", "swamp"),
-            NBTElement::Int("sky_color", 7907327),
-            NBTElement::Int("dry_foliage_color", 8082228),
-            NBTElement::Int("foliage_color", 9285927),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 3832426),
-            NBTElement::Int("water_fog_color", 5077600)
-        })
-    }) },
-    { "minecraft:meadow", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.meadow"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 937679),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:mushroom_fields", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.9f),
-        NBTElement::Float("downfall", 1.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 7842047),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:nether_wastes", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.nether_wastes.mood"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.nether.nether_wastes"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Compound("additions_sound", {
-                NBTElement::String("sound", "minecraft:ambient.nether_wastes.additions"),
-                NBTElement::Double("tick_chance", 0.0111)
-            }),
-            NBTElement::String("ambient_sound", "minecraft:ambient.nether_wastes.loop"),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("fog_color", 3344392),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:ocean", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:old_growth_birch_forest", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.6f),
-        NBTElement::Float("downfall", 0.6f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.forest"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8037887),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:old_growth_pine_taiga", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinTaigaBiomeData(const std::string& id, const std::string& music, int skyColor) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
         NBTElement::Float("temperature", 0.3f),
         NBTElement::Float("downfall", 0.8f),
@@ -1327,149 +356,23 @@ std::unordered_map<std::string, NBTElement> g_biome = {
                 NBTElement::Double("offset", 2.0)
             }),
             NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.old_growth_taiga"),
+                NBTElement::String("sound", "minecraft:music.overworld." + music),
                 NBTElement::Int("min_delay", 12000),
                 NBTElement::Int("max_delay", 24000),
                 NBTElement::Byte("replace_current_music", false)
             }),
-            NBTElement::Int("sky_color", 8168447),
+            NBTElement::Int("sky_color", skyColor),
             NBTElement::Int("fog_color", 12638463),
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:old_growth_spruce_taiga", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinRiverBiomeData(const std::string& id, float temperature, int waterColor) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.25f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.old_growth_taiga"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8233983),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:pale_garden", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.7f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 12171705),
-            NBTElement::Int("dry_foliage_color", 10528412),
-            NBTElement::Int("foliage_color", 8883574),
-            NBTElement::Int("grass_color", 7832178),
-            NBTElement::Int("fog_color", 8484720),
-            NBTElement::Int("water_color", 7768221),
-            NBTElement::Int("water_fog_color", 5597568)
-        })
-    }) },
-    { "minecraft:plains", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.8f),
-        NBTElement::Float("downfall", 0.4f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 7907327),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:river", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.5f),
+        NBTElement::Float("temperature", temperature),
         NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:savanna", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:savanna_plateau", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:small_end_islands", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 0),
-            NBTElement::Int("fog_color", 10518688),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:snowy_beach", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.05f),
-        NBTElement::Float("downfall", 0.3f),
         NBTElement::Compound("effects", {
             NBTElement::Compound("mood_sound", {
                 NBTElement::String("sound", "minecraft:ambient.cave"),
@@ -1479,11 +382,38 @@ std::unordered_map<std::string, NBTElement> g_biome = {
             }),
             NBTElement::Int("sky_color", 8364543),
             NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4020182),
+            NBTElement::Int("water_color", waterColor),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:snowy_plains", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinBirchForestBiomeData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::Byte("has_precipitation", true),
+        NBTElement::Float("temperature", 0.6f),
+        NBTElement::Float("downfall", 0.6f),
+        NBTElement::Compound("effects", {
+            NBTElement::Compound("mood_sound", {
+                NBTElement::String("sound", "minecraft:ambient.cave"),
+                NBTElement::Int("tick_delay", 6000),
+                NBTElement::Int("block_search_extent", 8),
+                NBTElement::Double("offset", 2.0)
+            }),
+            NBTElement::Compound("music", {
+                NBTElement::String("sound", "minecraft:music.overworld.forest"),
+                NBTElement::Int("min_delay", 12000),
+                NBTElement::Int("max_delay", 24000),
+                NBTElement::Byte("replace_current_music", false)
+            }),
+            NBTElement::Int("sky_color", 8037887),
+            NBTElement::Int("fog_color", 12638463),
+            NBTElement::Int("water_color", 4159204),
+            NBTElement::Int("water_fog_color", 329011)
+        })
+    }) };
+}
+std::pair<std::string, NBTElement> builtinSnowyPlainsBiomeData(const std::string& id) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
         NBTElement::Float("temperature", 0.0f),
         NBTElement::Float("downfall", 0.5f),
@@ -1499,245 +429,10 @@ std::unordered_map<std::string, NBTElement> g_biome = {
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:snowy_slopes", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", -0.3f),
-        NBTElement::Float("downfall", 0.9f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.snowy_slopes"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8560639),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:snowy_taiga", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", -0.5f),
-        NBTElement::Float("downfall", 0.4f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8625919),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4020182),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:soul_sand_valley", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.soul_sand_valley.mood"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.nether.soul_sand_valley"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Compound("additions_sound", {
-                NBTElement::String("sound", "minecraft:ambient.soul_sand_valley.additions"),
-                NBTElement::Double("tick_chance", 0.0111)
-            }),
-            NBTElement::Compound("particle", {
-                NBTElement::Compound("options", {
-                    NBTElement::String("type", "minecraft:ash")
-                }),
-                NBTElement::Float("probability", 0.00625f)
-            }),
-            NBTElement::String("ambient_sound", "minecraft:ambient.soul_sand_valley.loop"),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("fog_color", 1787717),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:sparse_jungle", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.95f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.sparse_jungle"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7842047),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:stony_peaks", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 1.0f),
-        NBTElement::Float("downfall", 0.3f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.stony_peaks"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7776511),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:stony_shore", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.2f),
-        NBTElement::Float("downfall", 0.3f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8233727),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:sunflower_plains", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.8f),
-        NBTElement::Float("downfall", 0.4f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 7907327),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:swamp", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.8f),
-        NBTElement::Float("downfall", 0.9f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.swamp"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::String("grass_color_modifier", "swamp"),
-            NBTElement::Int("sky_color", 7907327),
-            NBTElement::Int("dry_foliage_color", 8082228),
-            NBTElement::Int("foliage_color", 6975545),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 6388580),
-            NBTElement::Int("water_fog_color", 2302743)
-        })
-    }) },
-    { "minecraft:taiga", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.25f),
-        NBTElement::Float("downfall", 0.8f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.taiga"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 8233983),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:the_end", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 0),
-            NBTElement::Int("fog_color", 10518688),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:the_void", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 0.5f),
-        NBTElement::Float("downfall", 0.5f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:warm_ocean", NBTElement::Compound({
+    }) };
+}
+std::pair<std::string, NBTElement> builtinLushCaveBiomeData(const std::string& id, bool hasMusic) {
+    return { "minecraft:" + id, NBTElement::Compound({
         NBTElement::Byte("has_precipitation", true),
         NBTElement::Float("temperature", 0.5f),
         NBTElement::Float("downfall", 0.5f),
@@ -1748,669 +443,2745 @@ std::unordered_map<std::string, NBTElement> g_biome = {
                 NBTElement::Int("block_search_extent", 8),
                 NBTElement::Double("offset", 2.0)
             }),
-            NBTElement::Int("sky_color", 8103167),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4445678),
-            NBTElement::Int("water_fog_color", 270131)
-        })
-    }) },
-    { "minecraft:warped_forest", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.warped_forest.mood"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.nether.warped_forest"),
+            (hasMusic ? NBTElement::Compound("music", {
+                NBTElement::String("sound", "minecraft:music.overworld.lush_caves"),
                 NBTElement::Int("min_delay", 12000),
                 NBTElement::Int("max_delay", 24000),
                 NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Compound("additions_sound", {
-                NBTElement::String("sound", "minecraft:ambient.warped_forest.additions"),
-                NBTElement::Double("tick_chance", 0.0111)
-            }),
-            NBTElement::Compound("particle", {
-                NBTElement::Compound("options", {
-                    NBTElement::String("type", "minecraft:warped_spore")
-                }),
-                NBTElement::Float("probability", 0.01428f)
-            }),
-            NBTElement::String("ambient_sound", "minecraft:ambient.warped_forest.loop"),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("fog_color", 1705242),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:windswept_forest", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.2f),
-        NBTElement::Float("downfall", 0.3f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8233727),
+            }), NBTElement::Int("sky_color", 8103167) : NBTElement::Int("sky_color", 8103167)),
             NBTElement::Int("fog_color", 12638463),
             NBTElement::Int("water_color", 4159204),
             NBTElement::Int("water_fog_color", 329011)
         })
-    }) },
-    { "minecraft:windswept_gravelly_hills", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.2f),
-        NBTElement::Float("downfall", 0.3f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8233727),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:windswept_hills", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 0.2f),
-        NBTElement::Float("downfall", 0.3f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 8233727),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:windswept_savanna", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", true),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) },
-    { "minecraft:wooded_badlands", NBTElement::Compound({
-        NBTElement::Byte("has_precipitation", false),
-        NBTElement::Float("temperature", 2.0f),
-        NBTElement::Float("downfall", 0.0f),
-        NBTElement::Compound("effects", {
-            NBTElement::Compound("mood_sound", {
-                NBTElement::String("sound", "minecraft:ambient.cave"),
-                NBTElement::Int("tick_delay", 6000),
-                NBTElement::Int("block_search_extent", 8),
-                NBTElement::Double("offset", 2.0)
-            }),
-            NBTElement::Compound("music", {
-                NBTElement::String("sound", "minecraft:music.overworld.badlands"),
-                NBTElement::Int("min_delay", 12000),
-                NBTElement::Int("max_delay", 24000),
-                NBTElement::Byte("replace_current_music", false)
-            }),
-            NBTElement::Int("sky_color", 7254527),
-            NBTElement::Int("foliage_color", 10387789),
-            NBTElement::Int("grass_color", 9470285),
-            NBTElement::Int("fog_color", 12638463),
-            NBTElement::Int("water_color", 4159204),
-            NBTElement::Int("water_fog_color", 329011)
-        })
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_damageType = {
-    { "minecrat:arrow", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "arrow"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:bad_respawn_point", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "badRespawnPoint"), 
-        NBTElement::String("death_message_type", "intentional_game_design"), 
-        NBTElement::String("scaling", "always")
-    }) },
-    { "minecrat:cactus", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "cactus"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:campfire", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "inFire"), 
-        NBTElement::String("effects", "burning"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:cramming", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "cramming"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:dragon_breath", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "dragonBreath"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:drown", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "drown"),
-        NBTElement::String("effects", "drowning"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:dry_out", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "dryout"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:ender_pearl", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "fall"),
-        NBTElement::String("death_message_type", "fall_variants"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:explosion", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "explosion"),
-        NBTElement::String("scaling", "always")
-    }) },
-    { "minecrat:fall", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "fall"),
-        NBTElement::String("death_message_type", "fall_variants"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:falling_anvil", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "anvil"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:falling_block", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "fallingBlock"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:falling_stalactite", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "fallingStalactite"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:fireball", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "fireball"), 
-        NBTElement::String("effects", "burning"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:fireworks", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "fireworks"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:fly_into_wall", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "flyIntoWall"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:freeze", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "freeze"),
-        NBTElement::String("effects", "freezing"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:generic", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "generic"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:generic_kill", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "genericKill"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:hot_floor", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "hotFloor"), 
-        NBTElement::String("effects", "burning"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:in_fire", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "inFire"), 
-        NBTElement::String("effects", "burning"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:in_wall", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "inWall"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:indirect_magic", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "indirectMagic"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:lava", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "lava"), 
-        NBTElement::String("effects", "burning"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:lightning_bolt", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "lightningBolt"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:mace_smash", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "mace_smash"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:magic", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "magic"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:mob_attack", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "mob"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:mob_attack_no_aggro", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "mob"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:mob_projectile", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "mob"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:on_fire", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "onFire"), 
-        NBTElement::String("effects", "burning"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:out_of_world", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "outOfWorld"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:outside_border", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "outsideBorder"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:player_attack", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "player"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:player_explosion", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "explosion.player"),
-        NBTElement::String("scaling", "always")
-    }) },
-    { "minecrat:sonic_boom", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "sonic_boom"),
-        NBTElement::String("scaling", "always")
-    }) },
-    { "minecrat:spit", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "mob"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:stalagmite", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "stalagmite"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:starve", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "starve"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:sting", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "sting"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:sweet_berry_bush", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "sweetBerryBush"), 
-        NBTElement::String("effects", "poking"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:thorns", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "thorns"), 
-        NBTElement::String("effects", "thorns"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:thrown", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "thrown"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:trident", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "trident"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:unattributed_fireball", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "onFire"), 
-        NBTElement::String("effects", "burning"), 
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:wind_charge", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "mob"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:wither", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.0f),
-        NBTElement::String("message_id", "wither"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) },
-    { "minecrat:wither_skull", NBTElement::Compound({
-        NBTElement::Float("exhaustion", 0.1f),
-        NBTElement::String("message_id", "witherSkull"),
-        NBTElement::String("scaling", "when_caused_by_living_non_player")
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_dimensionType = {
-    { "minecraft:overworld", NBTElement::Compound({
-        NBTElement::String("infiniburn", "#minecraft:infiniburn_overworld"),
-        NBTElement::String("effects", "minecraft:overworld"),
-        NBTElement::Float("ambient_light", 0.0f),
-        NBTElement::Byte("piglin_safe", false),
-        NBTElement::Byte("has_raids", true),
-        NBTElement::Byte("respawn_anchor_works", false),
-        NBTElement::Byte("ultrawarm", false),
-        NBTElement::Byte("natural", true),
-        NBTElement::Byte("bed_works", true),
-        NBTElement::Byte("has_skylight", true),
-        NBTElement::Byte("has_ceiling", false),
-        NBTElement::Int("monster_spawn_block_light_limit", 0),
-        NBTElement::Int("min_y", -64),
-        NBTElement::Int("height", 384),
-        NBTElement::Int("logical_height", 384),
-        NBTElement::Double("coordinate_scale", 1.0f),
-        NBTElement::Compound("monster_spawn_light_level", {
-            NBTElement::Int("min_inclusive", 0),
-            NBTElement::Int("max_inclusive", 7),
-            NBTElement::String("type",  "minecraft:uniform")
-        })
-    }) },
-    { "minecraft:overworld_caves", NBTElement::Compound({
-        NBTElement::String("infiniburn", "#minecraft:infiniburn_overworld"),
-        NBTElement::String("effects", "minecraft:overworld"),
-        NBTElement::Float("ambient_light", 0.0f),
-        NBTElement::Byte("piglin_safe", false),
-        NBTElement::Byte("has_raids", true),
-        NBTElement::Byte("respawn_anchor_works", false),
-        NBTElement::Byte("ultrawarm", false),
-        NBTElement::Byte("natural", true),
-        NBTElement::Byte("bed_works", true),
-        NBTElement::Byte("has_skylight", true),
-        NBTElement::Byte("has_ceiling", false),
-        NBTElement::Int("monster_spawn_block_light_limit", 0),
-        NBTElement::Int("min_y", -64),
-        NBTElement::Int("height", 384),
-        NBTElement::Int("logical_height", 384),
-        NBTElement::Double("coordinate_scale", 1.0f),
-        NBTElement::Compound("monster_spawn_light_level", {
-            NBTElement::Int("min_inclusive", 0),
-            NBTElement::Int("max_inclusive", 7),
-            NBTElement::String("type",  "minecraft:uniform")
-        })
-    }) },
-    { "minecraft:the_end", NBTElement::Compound({
-        NBTElement::String("infiniburn", "#minecraft:infiniburn_end"),
-        NBTElement::String("effects", "minecraft:the_end"),
-        NBTElement::Float("ambient_light", 0.0f),
-        NBTElement::Byte("piglin_safe", false),
-        NBTElement::Byte("has_raids", true),
-        NBTElement::Byte("respawn_anchor_works", false),
-        NBTElement::Byte("ultrawarm", false),
-        NBTElement::Byte("natural", false),
-        NBTElement::Byte("bed_works", false),
-        NBTElement::Byte("has_skylight", true),
-        NBTElement::Byte("has_ceiling", false),
-        NBTElement::Int("monster_spawn_block_light_limit", 0),
-        NBTElement::Int("min_y", 0),
-        NBTElement::Int("height", 256),
-        NBTElement::Int("logical_height", 256),
-        NBTElement::Long("fixed_type", 6000),
-        NBTElement::Double("coordinate_scale", 1.0f),
-        NBTElement::Compound("monster_spawn_light_level", {
-            NBTElement::Int("min_inclusive", 0),
-            NBTElement::Int("max_inclusive", 7),
-            NBTElement::String("type",  "minecraft:uniform")
-        })
-    }) },
-    { "minecraft:the_nether", NBTElement::Compound({
-        NBTElement::String("infiniburn", "#minecraft:infiniburn_nether"),
-        NBTElement::String("effects", "minecraft:the_nether"),
-        NBTElement::Float("ambient_light", 0.1f),
-        NBTElement::Byte("piglin_safe", true),
-        NBTElement::Byte("has_raids", false),
-        NBTElement::Byte("respawn_anchor_works", true),
-        NBTElement::Byte("ultrawarm", true),
-        NBTElement::Byte("natural", false),
-        NBTElement::Byte("bed_works", false),
-        NBTElement::Byte("has_skylight", false),
-        NBTElement::Byte("has_ceiling", true),
-        NBTElement::Int("monster_spawn_block_light_limit", 15),
-        NBTElement::Int("min_y", 0),
-        NBTElement::Int("height", 256),
-        NBTElement::Int("logical_height", 128),
-        NBTElement::Long("fixed_type", 18000),
-        NBTElement::Double("coordinate_scale", 8.0f),
-        NBTElement::Int("monster_spawn_light_level", 7)
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_wolfVariant = {
-    { "minecraft:ashen", NBTElement::Compound({
+    }) }; // why the_void uses the same data (except for music)
+}
+std::pair<std::string, NBTElement> builtinWolfSoundData(const std::string& id, bool hasCustomId) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::String("hurt_sound", "minecraft:entity.wolf" + (hasCustomId ? "_" + id : "") + ".hurt"), 
+        NBTElement::String("pant_sound", "minecraft:entity.wolf" + (hasCustomId ? "_" + id : "") + ".pant"),
+        NBTElement::String("whine_sound", "minecraft:entity.wolf" + (hasCustomId ? "_" + id : "") + ".whine"), 
+        NBTElement::String("ambient_sound", "minecraft:entity.wolf" + (hasCustomId ? "_" + id : "") + ".ambient"), 
+        NBTElement::String("death_sound", "minecraft:entity.wolf" + (hasCustomId ? "_" + id : "") + ".death"), 
+        NBTElement::String("growl_sound", "minecraft:entity.wolf" + (hasCustomId ? "_" + id : "") + ".growl")
+    }) };
+}
+std::pair<std::string, NBTElement> builtinWolfData(const std::string& id, const std::vector<std::string>& biomes) {
+    NBTElement biomesList = NBTElement::List("biomes", {});
+    NBTElement result = NBTElement::Compound({
         NBTElement::Compound("assets", {
             NBTElement::String("wild", "minecraft:entity/wolf/wolf_ashen"),
             NBTElement::String("tame", "minecraft:entity/wolf/wolf_ashen_tame"),
             NBTElement::String("angry", "minecraft:entity/wolf/wolf_ashen_angry")
+        })
+    });
+    for (const std::string& biome : biomes) biomesList.m_childElements.push_back(NBTElement::String("minecraft:" + biome));
+    if (biomes.size()) result.m_childElements.push_back(biomesList);
+    return { "minecraft:" + id, result };
+}
+std::pair<std::string, NBTElement> builtinChatTypeData(
+    const std::string& id, const std::map<std::string, std::vector<std::string>>& chatTypeData, const NBTElement& style = NBTElement::Byte(0)
+) {
+    bool fail = false;
+    if (!chatTypeData.contains("chat_translate") || !chatTypeData.contains("chat_parameters") ||
+        !chatTypeData.contains("narration_translate") || !chatTypeData.contains("narration_parameters")) fail = true;
+    if (chatTypeData.contains("chat_translate")) if (!chatTypeData.at("chat_translate").size()) fail = true;
+    if (chatTypeData.contains("narration_translate")) if (!chatTypeData.at("narration_translate").size()) fail = true;
+    if (fail) return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::Compound("chat", {
+            NBTElement::String("translation_key", "chat.type.text"),
+            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
         }),
-        NBTElement::String("biomes", "minecraft:snowy_taiga")
-    }) },
-    { "minecraft:black", NBTElement::Compound({
-        NBTElement::Compound("assets", {
-            NBTElement::String("wild", "minecraft:entity/wolf/wolf_black"),
-            NBTElement::String("tame", "minecraft:entity/wolf/wolf_black_tame"),
-            NBTElement::String("angry", "minecraft:entity/wolf/wolf_black_angry")
+        NBTElement::Compound("narration", {
+            NBTElement::String("translation_key", "chat.type.text.narrate"),
+            NBTElement::List("parameters", { NBTElement::String("sender"), NBTElement::String("content") })
+        })
+    }) };
+    NBTElement chatParameters = NBTElement::List("parameters", {});
+    NBTElement narrationParameters = NBTElement::List("parameters", {});
+    for (const std::string& parameter : chatTypeData.at("chat_parameters")) 
+        chatParameters.m_childElements.push_back(NBTElement::String(parameter));
+    for (const std::string& parameter : chatTypeData.at("narration_parameters")) 
+        narrationParameters.m_childElements.push_back(NBTElement::String(parameter));
+    NBTElement data = NBTElement::Compound("chat", {
+        NBTElement::String("translation_key", chatTypeData.at("chat_translate")[0]),
+        chatParameters
+    });
+    if (style.m_type == NBTElementType::Compound)   
+        data.m_childElements.push_back(NBTElement::Compound("style", style.m_childElements));
+    return { "minecraft:" + id, NBTElement::Compound({
+        data,
+        NBTElement::Compound("narration", {
+            NBTElement::String("translation_key", chatTypeData.at("narration_translate")[0]),
+            narrationParameters
+        })
+    }) };
+}
+std::pair<std::string, NBTElement> builtinDamageType(const std::string& id, float exhaustion, const std::string& mId, bool isAlways) {
+    return { "minecrat:" + id, NBTElement::Compound({
+        NBTElement::Float("exhaustion", exhaustion),
+        NBTElement::String("message_id", mId), 
+        NBTElement::String("scaling", (isAlways ? "always" : "when_caused_by_living_non_player"))
+    }) };
+}
+std::pair<std::string, NBTElement> builtinDamageEffectType(const std::string& id, float exhaustion, const std::string& mId,
+                                                           const std::string& effect, bool isAlways) {
+    return { "minecrat:" + id, NBTElement::Compound({
+        NBTElement::Float("exhaustion", exhaustion),
+        NBTElement::String("message_id", mId), 
+        NBTElement::String("effects", effect), 
+        NBTElement::String("scaling", (isAlways ? "always" : "when_caused_by_living_non_player"))
+    }) };
+}
+std::pair<std::string, NBTElement> builtinDamageMessageType(const std::string& id, float exhaustion, const std::string& mId,
+                                                           const std::string& message, bool isAlways) {
+    return { "minecrat:" + id, NBTElement::Compound({
+        NBTElement::Float("exhaustion", exhaustion),
+        NBTElement::String("message_id", mId), 
+        NBTElement::String("death_message_type", message), 
+        NBTElement::String("scaling", (isAlways ? "always" : "when_caused_by_living_non_player"))
+    }) };
+}
+std::pair<std::string, NBTElement> builtinGoatHorn(const std::string& id, int soundId) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::String("sound_event", "minecraft:item.goat_horn.sound." + std::to_string(soundId)),
+        NBTElement::Float("use_duration", 7.0f),
+        NBTElement::Float("range", 256.0f),
+        NBTElement::Compound("description", TextComponentBuilder()
+            .translatable(TextComponentBuilder::TranslatableBuilder()
+                .translate("instrument.minecraft." + id).build()).build().encode().m_childElements
+        )
+    }) };
+}
+std::pair<std::string, NBTElement> builtinJukeBoxSongHorn(const std::string& id, float length, int comparator) {
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::String("sound_event", "minecraft:music_disc." + id),
+        NBTElement::Float("length_in_seconds", length),
+        NBTElement::Int("comparator_output", comparator),
+        NBTElement::Compound("description", TextComponentBuilder()
+            .translatable(TextComponentBuilder::TranslatableBuilder()
+                .translate("jukebox_song.minecraft." + id).build()).build().encode().m_childElements
+        )
+    }) };
+}
+std::pair<std::string, NBTElement> builtinEnchantment(const std::string& id, int minBase, int minInc, int maxBase, int maxInc, int anvil,
+                                                      const std::vector<std::string>& slots, const std::string& supportedItems,
+                                                      int weight, int maxLevel, const std::vector<NBTElement>& effects,
+                                                      const std::string& exclusiveSet) {
+    NBTElement slotsNBT = NBTElement::List("slots", {});
+    for (const std::string& slot : slots) slotsNBT.m_childElements.push_back(NBTElement::String(slot));
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::Compound("description", TextComponentBuilder()
+            .translatable(TextComponentBuilder::TranslatableBuilder().translate("enchantment.minecraft." + id).build())
+            .build().encode().m_childElements),
+        NBTElement::Compound("min_cost", {
+            NBTElement::Int("base", minBase),
+            NBTElement::Int("per_level_above_first", minInc)
         }),
-        NBTElement::String("biomes", "minecraft:old_growth_pine_taiga")
-    }) },
-    { "minecraft:chestnut", NBTElement::Compound({
-        NBTElement::Compound("assets", {
-            NBTElement::String("wild", "minecraft:entity/wolf/wolf_chestnut"),
-            NBTElement::String("tame", "minecraft:entity/wolf/wolf_chestnut_tame"),
-            NBTElement::String("angry", "minecraft:entity/wolf/wolf_chestnut_angry")
+        NBTElement::Compound("max_cost", {
+            NBTElement::Int("base", maxBase),
+            NBTElement::Int("per_level_above_first", maxInc)
         }),
-        NBTElement::String("biomes", "minecraft:old_growth_spruce_taiga")
-    }) },
-    { "minecraft:pale", NBTElement::Compound({
-        NBTElement::Compound("assets", {
-            NBTElement::String("wild", "minecraft:entity/wolf/wolf"),
-            NBTElement::String("tame", "minecraft:entity/wolf/wolf_tame"),
-            NBTElement::String("angry", "minecraft:entity/wolf/wolf_angry")
+        NBTElement::Int("anvil_cost", anvil),
+        slotsNBT,
+        NBTElement::String("supported_items", supportedItems),
+        NBTElement::String("exclusive_set", exclusiveSet),
+        NBTElement::Int("weight", weight),
+        NBTElement::Int("max_level", maxLevel),
+        NBTElement::Compound("effects", effects)
+    }) };
+}
+std::pair<std::string, NBTElement> builtinEnchantment(const std::string& id, int minBase, int minInc, int maxBase, int maxInc, int anvil,
+                                                      const std::vector<std::string>& slots, const std::string& supportedItems,
+                                                      int weight, int maxLevel, const std::vector<NBTElement>& effects,
+                                                      const std::string& exclusiveSet, const std::string& primaryItems) {
+    NBTElement slotsNBT = NBTElement::List("slots", {});
+    for (const std::string& slot : slots) slotsNBT.m_childElements.push_back(NBTElement::String(slot));
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::Compound("description", TextComponentBuilder()
+            .translatable(TextComponentBuilder::TranslatableBuilder().translate("enchantment.minecraft." + id).build())
+            .build().encode().m_childElements),
+        NBTElement::Compound("min_cost", {
+            NBTElement::Int("base", minBase),
+            NBTElement::Int("per_level_above_first", minInc)
         }),
-        NBTElement::String("biomes", "minecraft:taiga")
-    }) },
-    { "minecraft:rusty", NBTElement::Compound({
-        NBTElement::Compound("assets", {
-            NBTElement::String("wild", "minecraft:entity/wolf/wolf_rusty"),
-            NBTElement::String("tame", "minecraft:entity/wolf/wolf_rusty_tame"),
-            NBTElement::String("angry", "minecraft:entity/wolf/wolf_rusty_angry")
+        NBTElement::Compound("max_cost", {
+            NBTElement::Int("base", maxBase),
+            NBTElement::Int("per_level_above_first", maxInc)
         }),
-        NBTElement::String("biomes", "minecraft:sparse_jungle")
-    }) },
-    { "minecraft:snowy", NBTElement::Compound({
-        NBTElement::Compound("assets", {
-            NBTElement::String("wild", "minecraft:entity/wolf/wolf_snowy"),
-            NBTElement::String("tame", "minecraft:entity/wolf/wolf_snowy_tame"),
-            NBTElement::String("angry", "minecraft:entity/wolf/wolf_snowy_angry")
+        NBTElement::Int("anvil_cost", anvil),
+        slotsNBT,
+        NBTElement::String("supported_items", supportedItems),
+        NBTElement::String("primary_items", primaryItems),
+        NBTElement::String("exclusive_set", exclusiveSet),
+        NBTElement::Int("weight", weight),
+        NBTElement::Int("max_level", maxLevel),
+        NBTElement::Compound("effects", effects)
+    }) };
+}
+std::pair<std::string, NBTElement> builtinEnchantment(const std::string& id, int minBase, int minInc, int maxBase, int maxInc, int anvil,
+                                                      const std::vector<std::string>& slots, const std::string& supportedItems,
+                                                      int weight, int maxLevel, const std::vector<NBTElement>& effects) {
+    NBTElement slotsNBT = NBTElement::List("slots", {});
+    for (const std::string& slot : slots) slotsNBT.m_childElements.push_back(NBTElement::String(slot));
+    return { "minecraft:" + id, NBTElement::Compound({
+        NBTElement::Compound("description", TextComponentBuilder()
+            .translatable(TextComponentBuilder::TranslatableBuilder().translate("enchantment.minecraft." + id).build())
+            .build().encode().m_childElements),
+        NBTElement::Compound("min_cost", {
+            NBTElement::Int("base", minBase),
+            NBTElement::Int("per_level_above_first", minInc)
         }),
-        NBTElement::String("biomes", "minecraft:grove")
-    }) },
-    { "minecraft:spotted", NBTElement::Compound({
-        NBTElement::Compound("assets", {
-            NBTElement::String("wild", "minecraft:entity/wolf/wolf_spotted"),
-            NBTElement::String("tame", "minecraft:entity/wolf/wolf_spotted_tame"),
-            NBTElement::String("angry", "minecraft:entity/wolf/wolf_spotted_angry")
+        NBTElement::Compound("max_cost", {
+            NBTElement::Int("base", maxBase),
+            NBTElement::Int("per_level_above_first", maxInc)
         }),
-        NBTElement::String("biomes", "minecraft:savanna_plateau")
-    }) },
-    { "minecraft:striped", NBTElement::Compound({
-        NBTElement::Compound("assets", {
-            NBTElement::String("wild", "minecraft:entity/wolf/wolf_striped"),
-            NBTElement::String("tame", "minecraft:entity/wolf/wolf_striped_tame"),
-            NBTElement::String("angry", "minecraft:entity/wolf/wolf_striped_angry")
+        NBTElement::Int("anvil_cost", anvil),
+        slotsNBT,
+        NBTElement::String("supported_items", supportedItems),
+        NBTElement::Int("weight", weight),
+        NBTElement::Int("max_level", maxLevel),
+        NBTElement::Compound("effects", effects)
+    }) };
+}
+NBTElement attributeBuilder(const std::string& id, const std::string& attr, const std::string& operation, 
+                            float base, float perLevel, const std::string& type) {
+    return NBTElement::Compound({
+        NBTElement::String("id", "minecraft:" + id),
+        NBTElement::String("attribute", "minecraft:" + attr),
+        NBTElement::String("operation", operation),
+        NBTElement::Compound("amount", {
+            NBTElement::String("type", "minecraft:" + type),
+            NBTElement::Float("base", base),
+            NBTElement::Float("per_level_above_first", perLevel)
+        })
+    });
+}
+// END BUILTIN DATA GENERATORS
+
+std::unordered_map<std::string, std::unordered_map<std::string, NBTElement>> g_registries = {
+    { "chat_type", {
+        builtinChatTypeData("chat", {
+            { "chat_translate",  { "chat.type.text" } }, { "narration_translate",  { "chat.type.text.narrate" } },
+            { "chat_parameters",  { "sender", "content" } }, { "narration_parameters",  { "sender", "content" } }
         }),
-        NBTElement::String("biomes", "minecraft:wooded_badlands")
-    }) },
-    { "minecraft:woods", NBTElement::Compound({
-        NBTElement::Compound("assets", {
-            NBTElement::String("wild", "minecraft:entity/wolf/wolf_woods"),
-            NBTElement::String("tame", "minecraft:entity/wolf/wolf_woods_tame"),
-            NBTElement::String("angry", "minecraft:entity/wolf/wolf_woods_angry")
+        builtinChatTypeData("emote_command", {
+            { "chat_translate",  { "chat.type.emote" } }, { "narration_translate",  { "chat.type.emote" } },
+            { "chat_parameters",  { "sender", "content" } }, { "narration_parameters",  { "sender", "content" } }
         }),
-        NBTElement::String("biomes", "minecraft:forest")
-    }) }
+        builtinChatTypeData("msg_command_incoming", {
+            { "chat_translate",  { "commands.message.display.incoming" } }, { "narration_translate",  { "chat.type.text.narrate" } },
+            { "chat_parameters",  { "sender", "content" } }, { "narration_parameters",  { "sender", "content" } }
+        }, NBTElement::Compound({
+            NBTElement::Byte("italic", false), NBTElement::String("color", "gray") 
+        })),
+        builtinChatTypeData("msg_command_incoming", {
+            { "chat_translate",  { "commands.message.display.outgoing" } }, { "narration_translate",  { "chat.type.text.narrate" } },
+            { "chat_parameters",  { "sender", "content" } }, { "narration_parameters",  { "sender", "content" } }
+        }, NBTElement::Compound({
+            NBTElement::Byte("italic", false), NBTElement::String("color", "gray") 
+        })),
+        builtinChatTypeData("say_command", {
+            { "chat_translate",  { "chat.type.announcement" } }, { "narration_translate",  { "chat.type.text.narrate" } },
+            { "chat_parameters",  { "sender", "content" } }, { "narration_parameters",  { "sender", "content" } }
+        }),
+        builtinChatTypeData("team_msg_command_incoming", {
+            { "chat_translate",  { "chat.type.team.text" } }, { "narration_translate",  { "chat.type.text.narrate" } },
+            { "chat_parameters",  { "target", "sender", "content" } }, { "narration_parameters",  { "sender", "content" } }
+        }),
+        builtinChatTypeData("team_msg_command_outgoing", {
+            { "chat_translate",  { "chat.type.team.text" } }, { "narration_translate",  { "chat.type.text.narrate" } },
+            { "chat_parameters",  { "target", "sender", "content" } }, { "narration_parameters",  { "sender", "content" } }
+        }),
+    } },
+    { "banner_pattern", {
+        builtinBannerPatternData("base"), builtinBannerPatternData("border"), builtinBannerPatternData("bricks"),
+        builtinBannerPatternData("circle"), builtinBannerPatternData("creeper"), builtinBannerPatternData("cross"),
+        builtinBannerPatternData("curly_border"), builtinBannerPatternData("diagonal_left"), 
+        builtinBannerPatternData("diagonal_right"), builtinBannerPatternData("diagonal_left_up"),
+        builtinBannerPatternData("diagonal_right_up"), builtinBannerPatternData("flow"), builtinBannerPatternData("flower"),
+        builtinBannerPatternData("globe"), builtinBannerPatternData("gradient"), builtinBannerPatternData("gradient_up"),
+        builtinBannerPatternData("guster"), builtinBannerPatternData("half_horizontal"), 
+        builtinBannerPatternData("half_horizontal_bottom"), builtinBannerPatternData("half_vertical"),
+        builtinBannerPatternData("half_vertical_right"), builtinBannerPatternData("mojang"), builtinBannerPatternData("piglin"),
+        builtinBannerPatternData("rhombus"), builtinBannerPatternData("skull"), builtinBannerPatternData("small_stripes"),
+        builtinBannerPatternData("square_bottom_left"), builtinBannerPatternData("square_bottom_right"),
+        builtinBannerPatternData("square_top_left"), builtinBannerPatternData("square_top_right"),
+        builtinBannerPatternData("straight_cross"), builtinBannerPatternData("stripe_bottom"),
+        builtinBannerPatternData("stripe_center"), builtinBannerPatternData("stripe_downleft"),
+        builtinBannerPatternData("stripe_downright"), builtinBannerPatternData("stripe_left"),
+        builtinBannerPatternData("stripe_middle"), builtinBannerPatternData("stripe_right"), 
+        builtinBannerPatternData("stripe_top"), builtinBannerPatternData("triangle_bottom"),
+        builtinBannerPatternData("triangle_top"), builtinBannerPatternData("triangles_bottom"),
+        builtinBannerPatternData("triangles_top"),
+    } },
+    { "trim_pattern", {
+        builtinTrimPatternData("bolt"), builtinTrimPatternData("coast"), builtinTrimPatternData("dune"),
+        builtinTrimPatternData("eye"), builtinTrimPatternData("host"), builtinTrimPatternData("raiser"),
+        builtinTrimPatternData("rib"), builtinTrimPatternData("sentry"), builtinTrimPatternData("shaper"),
+        builtinTrimPatternData("silence"), builtinTrimPatternData("snout"), builtinTrimPatternData("spire"),
+        builtinTrimPatternData("tide"), builtinTrimPatternData("vex"), builtinTrimPatternData("ward"),
+        builtinTrimPatternData("wayfinder"), builtinTrimPatternData("wild")
+    } },
+    { "damage_type", {
+        builtinDamageType("arrow", 0.1f, "arrow", false),
+        builtinDamageMessageType("bad_respawn_point", 0.1f, "badRespawnPoint", "intentional_game_design", true),
+        builtinDamageType("cactus", 0.1f, "cactus", false),
+        builtinDamageEffectType("campfire", 0.1f, "inFire", "burning", false),
+        builtinDamageType("cramming", 0.0f, "cramming", false),
+        builtinDamageType("dragon_breath", 0.0f, "dragonBreath", false),
+        builtinDamageEffectType("drown", 0.0f, "drown", "drowning", false),
+        builtinDamageType("dry_out", 0.1f, "dryout", false),
+        builtinDamageMessageType("ender_pearl", 0.0f, "fall", "fall_variants", false),
+        builtinDamageType("explosion", 0.1f, "explosion", true),
+        builtinDamageMessageType("fall", 0.0f, "fall", "fall_variants", false),
+        builtinDamageType("falling_anvil", 0.1f, "anvil", false),
+        builtinDamageType("falling_block", 0.1f, "fallingBlock", false),
+        builtinDamageType("falling_stalactite", 0.1f, "fallingStalactite", false),
+        builtinDamageEffectType("fireball", 0.1f, "fireball", "burning", false),
+        builtinDamageType("fireworks", 0.1f, "fireworks", false),
+        builtinDamageType("fly_into_wall", 0.0f, "flyIntoWall", false),
+        builtinDamageEffectType("freeze", 0.0f, "freeze", "freezing", false),
+        builtinDamageType("generic", 0.0f, "generic", false),
+        builtinDamageType("generic_kill", 0.0f, "genericKill", false),
+        builtinDamageEffectType("hot_floor", 0.1f, "hotFloor", "burning", false),
+        builtinDamageEffectType("in_fire", 0.1f, "inFire", "burning", false),
+        builtinDamageType("in_wall", 0.0f, "inWall", false),
+        builtinDamageType("indirect_magic", 0.0f, "indirectMagic", false),
+        builtinDamageEffectType("lava", 0.1f, "lava", "burning", false),
+        builtinDamageType("lightning_bolt", 0.1f, "lightningBolt", false),
+        builtinDamageType("mace_smash", 0.1f, "mace_smash", false),
+        builtinDamageType("magic", 0.0f, "magic", false),
+        builtinDamageType("mob_attack", 0.1f, "mob", false),
+        builtinDamageType("mob_attack_no_aggro", 0.1f, "mob", false),
+        builtinDamageType("mob_projectile", 0.1f, "mob", false),
+        builtinDamageEffectType("on_fire", 0.0f, "onFire", "burning", false),
+        builtinDamageType("out_of_world", 0.0f, "outOfWorld", false),
+        builtinDamageType("outside_border", 0.0f, "outsideBorder", false),
+        builtinDamageType("player_attack", 0.0f, "player", false),
+        builtinDamageType("player_explosion", 0.1f, "explosion.player", true),
+        builtinDamageType("sonic_boom", 0.1f, "sonic_boom", true),
+        builtinDamageType("spit", 0.0f, "mob", false),
+        builtinDamageType("stalagmite", 0.1f, "stalagmite", false),
+        builtinDamageType("starve", 0.0f, "starve", false),
+        builtinDamageType("sting", 0.0f, "sting", false),
+        builtinDamageEffectType("sweet_berry_bush", 0.1f, "sweetBerryBush", "poking", false),
+        builtinDamageEffectType("thorns", 0.1f, "thorns", "thorns", false),
+        builtinDamageType("thrown", 0.1f, "thrown", false),
+        builtinDamageType("trident", 0.1f, "trident", false),
+        builtinDamageEffectType("unattributed_fireball", 0.1f, "onFire", "burning", false),
+        builtinDamageType("wind_charge", 0.1f, "mob", false),
+        builtinDamageType("wither", 0.0f, "wither", false),
+        builtinDamageType("wither_skull", 0.1f, "witherSkull", false),
+    } },
+    { "trim_material", {
+        builtinTrimMaterialData("amethyst", "9A5CC6"),builtinTrimMaterialData("copper", "B4684D"),
+        builtinTrimMaterialData("diamond", "6EECD2", "diamond"),
+        builtinTrimMaterialData("iron", "ECECEC", "iron"), builtinTrimMaterialData("gold", "DEB12D", "gold"),
+        builtinTrimMaterialData("netherite", "625859", "netherite"), builtinTrimMaterialData("lapis", "416E97"),
+        builtinTrimMaterialData("quartz", "E3D4C4"), builtinTrimMaterialData("redstone", "971607"),
+        builtinTrimMaterialData("resin", "FC7812"), builtinTrimMaterialData("emerald", "11A036")
+    } },
+    { "dimension_type", {
+        { "minecraft:overworld", NBTElement::Compound({
+            NBTElement::String("infiniburn", "#minecraft:infiniburn_overworld"),
+            NBTElement::String("effects", "minecraft:overworld"),
+            NBTElement::Float("ambient_light", 0.0f),
+            NBTElement::Byte("piglin_safe", false),
+            NBTElement::Byte("has_raids", true),
+            NBTElement::Byte("respawn_anchor_works", false),
+            NBTElement::Byte("ultrawarm", false),
+            NBTElement::Byte("natural", true),
+            NBTElement::Byte("bed_works", true),
+            NBTElement::Byte("has_skylight", true),
+            NBTElement::Byte("has_ceiling", false),
+            NBTElement::Int("monster_spawn_block_light_limit", 0),
+            NBTElement::Int("min_y", -64),
+            NBTElement::Int("height", 384),
+            NBTElement::Int("logical_height", 384),
+            NBTElement::Double("coordinate_scale", 1.0f),
+            NBTElement::Compound("monster_spawn_light_level", {
+                NBTElement::Int("min_inclusive", 0),
+                NBTElement::Int("max_inclusive", 7),
+                NBTElement::String("type",  "minecraft:uniform")
+            })
+        }) },
+        { "minecraft:overworld_caves", NBTElement::Compound({
+            NBTElement::String("infiniburn", "#minecraft:infiniburn_overworld"),
+            NBTElement::String("effects", "minecraft:overworld"),
+            NBTElement::Float("ambient_light", 0.0f),
+            NBTElement::Byte("piglin_safe", false),
+            NBTElement::Byte("has_raids", true),
+            NBTElement::Byte("respawn_anchor_works", false),
+            NBTElement::Byte("ultrawarm", false),
+            NBTElement::Byte("natural", true),
+            NBTElement::Byte("bed_works", true),
+            NBTElement::Byte("has_skylight", true),
+            NBTElement::Byte("has_ceiling", false),
+            NBTElement::Int("monster_spawn_block_light_limit", 0),
+            NBTElement::Int("min_y", -64),
+            NBTElement::Int("height", 384),
+            NBTElement::Int("logical_height", 384),
+            NBTElement::Double("coordinate_scale", 1.0f),
+            NBTElement::Compound("monster_spawn_light_level", {
+                NBTElement::Int("min_inclusive", 0),
+                NBTElement::Int("max_inclusive", 7),
+                NBTElement::String("type",  "minecraft:uniform")
+            })
+        }) },
+        { "minecraft:the_end", NBTElement::Compound({
+            NBTElement::String("infiniburn", "#minecraft:infiniburn_end"),
+            NBTElement::String("effects", "minecraft:the_end"),
+            NBTElement::Float("ambient_light", 0.0f),
+            NBTElement::Byte("piglin_safe", false),
+            NBTElement::Byte("has_raids", true),
+            NBTElement::Byte("respawn_anchor_works", false),
+            NBTElement::Byte("ultrawarm", false),
+            NBTElement::Byte("natural", false),
+            NBTElement::Byte("bed_works", false),
+            NBTElement::Byte("has_skylight", true),
+            NBTElement::Byte("has_ceiling", false),
+            NBTElement::Int("monster_spawn_block_light_limit", 0),
+            NBTElement::Int("min_y", 0),
+            NBTElement::Int("height", 256),
+            NBTElement::Int("logical_height", 256),
+            NBTElement::Long("fixed_type", 6000),
+            NBTElement::Double("coordinate_scale", 1.0f),
+            NBTElement::Compound("monster_spawn_light_level", {
+                NBTElement::Int("min_inclusive", 0),
+                NBTElement::Int("max_inclusive", 7),
+                NBTElement::String("type",  "minecraft:uniform")
+            })
+        }) },
+        { "minecraft:the_nether", NBTElement::Compound({
+            NBTElement::String("infiniburn", "#minecraft:infiniburn_nether"),
+            NBTElement::String("effects", "minecraft:the_nether"),
+            NBTElement::Float("ambient_light", 0.1f),
+            NBTElement::Byte("piglin_safe", true),
+            NBTElement::Byte("has_raids", false),
+            NBTElement::Byte("respawn_anchor_works", true),
+            NBTElement::Byte("ultrawarm", true),
+            NBTElement::Byte("natural", false),
+            NBTElement::Byte("bed_works", false),
+            NBTElement::Byte("has_skylight", false),
+            NBTElement::Byte("has_ceiling", true),
+            NBTElement::Int("monster_spawn_block_light_limit", 15),
+            NBTElement::Int("min_y", 0),
+            NBTElement::Int("height", 256),
+            NBTElement::Int("logical_height", 128),
+            NBTElement::Long("fixed_type", 18000),
+            NBTElement::Double("coordinate_scale", 8.0f),
+            NBTElement::Int("monster_spawn_light_level", 7)
+        }) }
+    } },
+    { "worldgen/biome", {
+        // builtinBadlandsBiomeData("badlands"),
+        builtinJungleBiomeData("bamboo_jungle", 0.9f),
+        builtinNetherBiomeData("basalt_deltas", 0.118093334f, "white_ash"),
+    //     builtinPlainsBiomeData("beach"),
+    //     builtinBirchForestBiomeData("birch_forest"),
+    //     { "minecraft:cherry_grove", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.5f),
+    //         NBTElement::Float("downfall", 0.8f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Compound("music", {
+    //                 NBTElement::String("sound", "minecraft:music.overworld.cherry_grove"),
+    //                 NBTElement::Int("min_delay", 12000),
+    //                 NBTElement::Int("max_delay", 24000),
+    //                 NBTElement::Byte("replace_current_music", false)
+    //             }),
+    //             NBTElement::Int("sky_color", 8103167),
+    //             NBTElement::Int("foliage_color", 11983713),
+    //             NBTElement::Int("grass_color", 11983713),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 6141935),
+    //             NBTElement::Int("water_fog_color", 6141935)
+    //         })
+    //     }) },
+        builtinOceanBiomeData("cold_ocean", 4020182, 329011, false),
+        builtinNetherBiomeData("crimson_forest", 0.025f, "crimson_spore"),
+    //     { "minecraft:dark_forest", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.7f),
+    //         NBTElement::Float("downfall", 0.8f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Compound("music", {
+    //                 NBTElement::String("sound", "minecraft:music.overworld.forest"),
+    //                 NBTElement::Int("min_delay", 12000),
+    //                 NBTElement::Int("max_delay", 24000),
+    //                 NBTElement::Byte("replace_current_music", false)
+    //             }),
+    //             NBTElement::String("grass_color_modifier", "dark_forest"),
+    //             NBTElement::Int("sky_color", 7972607),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("dry_foliage_color", 8082228),
+    //             NBTElement::Int("water_color", 4159204),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+        builtinOceanBiomeData("deep_cold_ocean", 4020182, 329011, false),
+    //     builtinCaveBiomeData("deep_dark"),
+        builtinOceanBiomeData("deep_frozen_ocean", 3750089, 329011, true),
+        builtinOceanBiomeData("deep_lukewarm_ocean", 4566514, 267827, false),
+        builtinOceanBiomeData("deep_ocean", 4159204, 329011, false),
+        builtinDesertBiomeData("desert", true),
+        builtinCaveBiomeData("dripstone_caves"),
+        builtinEndBiomeData("end_barrens"),
+        builtinEndBiomeData("end_highlands"),
+        builtinEndBiomeData("end_midlands"),
+        builtinBadlandsBiomeData("eroded_badlands"),
+        { "minecraft:flower_forest", NBTElement::Compound({
+            NBTElement::Byte("has_precipitation", true),
+            NBTElement::Float("temperature", 0.7f),
+            NBTElement::Float("downfall", 0.8f),
+            NBTElement::Compound("effects", {
+                NBTElement::Compound("mood_sound", {
+                    NBTElement::String("sound", "minecraft:ambient.cave"),
+                    NBTElement::Int("tick_delay", 6000),
+                    NBTElement::Int("block_search_extent", 8),
+                    NBTElement::Double("offset", 2.0)
+                }),
+                NBTElement::Compound("music", {
+                    NBTElement::String("sound", "minecraft:music.overworld.flower_forest"),
+                    NBTElement::Int("min_delay", 12000),
+                    NBTElement::Int("max_delay", 24000),
+                    NBTElement::Byte("replace_current_music", false)
+                }),
+                NBTElement::Int("sky_color", 7972607),
+                NBTElement::Int("fog_color", 12638463),
+                NBTElement::Int("water_color", 4159204),
+                NBTElement::Int("water_fog_color", 329011)
+            })
+        }) },
+    //     { "minecraft:forest", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.7f),
+    //         NBTElement::Float("downfall", 0.8f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Compound("music", {
+    //                 NBTElement::String("sound", "minecraft:music.overworld.forest"),
+    //                 NBTElement::Int("min_delay", 12000),
+    //                 NBTElement::Int("max_delay", 24000),
+    //                 NBTElement::Byte("replace_current_music", false)
+    //             }),
+    //             NBTElement::Int("sky_color", 7972607),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 4159204),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+        builtinOceanBiomeData("frozen_ocean", 3750089, 329011, true),
+    //     builtinPeaksBiomeData("frozen_peaks", 0.9f, -0.7f, 8756735),
+    //     builtinRiverBiomeData("frozen_river", 0.0f, 3750089),
+    //     { "minecraft:grove", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", -0.2f),
+    //         NBTElement::Float("downfall", 0.8f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Compound("music", {
+    //                 NBTElement::String("sound", "minecraft:music.overworld.grove"),
+    //                 NBTElement::Int("min_delay", 12000),
+    //                 NBTElement::Int("max_delay", 24000),
+    //                 NBTElement::Byte("replace_current_music", false)
+    //             }),
+    //             NBTElement::Int("sky_color", 8495359),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 4159204),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+    //     builtinSnowyPlainsBiomeData("ice_spikes"),
+    //     builtinPeaksBiomeData("jagged_peaks", 0.9f, -0.7f, 8756735),
+        builtinJungleBiomeData("jungle", 0.9f),
+        builtinOceanBiomeData("lukewarm_ocean", 4566514, 267827, false),
+    //     builtinLushCaveBiomeData("lush_caves", true),
+    //     { "minecraft:mangrove_swamp", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.8f),
+    //         NBTElement::Float("downfall", 0.9f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Compound("music", {
+    //                 NBTElement::String("sound", "minecraft:music.overworld.swamp"),
+    //                 NBTElement::Int("min_delay", 12000),
+    //                 NBTElement::Int("max_delay", 24000),
+    //                 NBTElement::Byte("replace_current_music", false)
+    //             }),
+    //             NBTElement::String("grass_color_modifier", "swamp"),
+    //             NBTElement::Int("sky_color", 7907327),
+    //             NBTElement::Int("dry_foliage_color", 8082228),
+    //             NBTElement::Int("foliage_color", 9285927),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 3832426),
+    //             NBTElement::Int("water_fog_color", 5077600)
+    //         })
+    //     }) },
+    //     { "minecraft:meadow", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.5f),
+    //         NBTElement::Float("downfall", 0.8f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Compound("music", {
+    //                 NBTElement::String("sound", "minecraft:music.overworld.meadow"),
+    //                 NBTElement::Int("min_delay", 12000),
+    //                 NBTElement::Int("max_delay", 24000),
+    //                 NBTElement::Byte("replace_current_music", false)
+    //             }),
+    //             NBTElement::Int("sky_color", 8103167),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 937679),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+    //     { "minecraft:mushroom_fields", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.9f),
+    //         NBTElement::Float("downfall", 1.0f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Int("sky_color", 7842047),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 4159204),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+        builtinNetherBiomeData("nether_wastes", -1.0f, ""),
+        builtinOceanBiomeData("ocean", 4159204, 329011, false),
+        // builtinBirchForestBiomeData("old_growth_birch_forest"),
+        // builtinTaigaBiomeData("old_growth_pine_taiga", "old_growth_taiga", 8168447),
+        // builtinTaigaBiomeData("old_growth_spruce_taiga", "old_growth_taiga", 8233983),
+        // { "minecraft:pale_garden", NBTElement::Compound({
+        //     NBTElement::Byte("has_precipitation", true),
+        //     NBTElement::Float("temperature", 0.7f),
+        //     NBTElement::Float("downfall", 0.8f),
+        //     NBTElement::Compound("effects", {
+        //         NBTElement::Compound("mood_sound", {
+        //             NBTElement::String("sound", "minecraft:ambient.cave"),
+        //             NBTElement::Int("tick_delay", 6000),
+        //             NBTElement::Int("block_search_extent", 8),
+        //             NBTElement::Double("offset", 2.0)
+        //         }),
+        //         NBTElement::Int("sky_color", 12171705),
+        //         NBTElement::Int("dry_foliage_color", 10528412),
+        //         NBTElement::Int("foliage_color", 8883574),
+        //         NBTElement::Int("grass_color", 7832178),
+        //         NBTElement::Int("fog_color", 8484720),
+        //         NBTElement::Int("water_color", 7768221),
+        //         NBTElement::Int("water_fog_color", 5597568)
+        //     })
+        // }) },
+        // builtinPlainsBiomeData("plains"),
+        // builtinRiverBiomeData("river", 0.5f, 4159204),
+        builtinDesertBiomeData("savanna", false),
+        builtinDesertBiomeData("savanna_plateau", false),
+    //     builtinEndBiomeData("small_end_islands"),
+    //     { "minecraft:snowy_beach", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.05f),
+    //         NBTElement::Float("downfall", 0.3f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Int("sky_color", 8364543),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 4020182),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+    //     builtinSnowyPlainsBiomeData("snowy_plains"),
+    //     { "minecraft:snowy_slopes", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", -0.3f),
+    //         NBTElement::Float("downfall", 0.9f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Compound("music", {
+    //                 NBTElement::String("sound", "minecraft:music.overworld.snowy_slopes"),
+    //                 NBTElement::Int("min_delay", 12000),
+    //                 NBTElement::Int("max_delay", 24000),
+    //                 NBTElement::Byte("replace_current_music", false)
+    //             }),
+    //             NBTElement::Int("sky_color", 8560639),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 4159204),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+    //     { "minecraft:snowy_taiga", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", -0.5f),
+    //         NBTElement::Float("downfall", 0.4f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Int("sky_color", 8625919),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 4020182),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+        builtinNetherBiomeData("soul_sand_valley", 0.00625f, "ash"),
+        builtinJungleBiomeData("sparse_jungle", 0.8f),
+    //     builtinPeaksBiomeData("stony_peaks", 0.3f, 1.0f, 7776511),
+    //     { "minecraft:stony_shore", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.2f),
+    //         NBTElement::Float("downfall", 0.3f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Int("sky_color", 8233727),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 4159204),
+    //             NBTElement::Int("water_fog_color", 329011)
+    //         })
+    //     }) },
+    //     builtinPlainsBiomeData("sunflower_plains"),
+    //     { "minecraft:swamp", NBTElement::Compound({
+    //         NBTElement::Byte("has_precipitation", true),
+    //         NBTElement::Float("temperature", 0.8f),
+    //         NBTElement::Float("downfall", 0.9f),
+    //         NBTElement::Compound("effects", {
+    //             NBTElement::Compound("mood_sound", {
+    //                 NBTElement::String("sound", "minecraft:ambient.cave"),
+    //                 NBTElement::Int("tick_delay", 6000),
+    //                 NBTElement::Int("block_search_extent", 8),
+    //                 NBTElement::Double("offset", 2.0)
+    //             }),
+    //             NBTElement::Compound("music", {
+    //                 NBTElement::String("sound", "minecraft:music.overworld.swamp"),
+    //                 NBTElement::Int("min_delay", 12000),
+    //                 NBTElement::Int("max_delay", 24000),
+    //                 NBTElement::Byte("replace_current_music", false)
+    //             }),
+    //             NBTElement::String("grass_color_modifier", "swamp"),
+    //             NBTElement::Int("sky_color", 7907327),
+    //             NBTElement::Int("dry_foliage_color", 8082228),
+    //             NBTElement::Int("foliage_color", 6975545),
+    //             NBTElement::Int("fog_color", 12638463),
+    //             NBTElement::Int("water_color", 6388580),
+    //             NBTElement::Int("water_fog_color", 2302743)
+    //         })
+    //     }) },
+    //     builtinTaigaBiomeData("taiga", "taiga", 8233983),
+    //     builtinEndBiomeData("the_end"),
+    //     builtinLushCaveBiomeData("the_void", false),
+        builtinNetherBiomeData("warped_forest", 0.01428f, "warped_spore"),
+        // builtinWindsweptBiomeData("minecraft:windswept_forest"),
+        // builtinWindsweptBiomeData("minecraft:windswept_gravelly_hills"),
+        // builtinWindsweptBiomeData("minecraft:windswept_hills"),
+        builtinDesertBiomeData("windswept_savanna", false),
+    //     builtinBadlandsBiomeData("wooded_badlands")
+    } },
+    { "pig_variant", builtinTemperatureMobVariantData("pig") },
+    { "frog_variant", builtinTemperatureMobVariantData("frog") },
+    { "cow_variant", builtinTemperatureMobVariantData("cow") },
+    { "chicken_variant", builtinTemperatureMobVariantData("chicken") },
+    { "wolf_variant", {
+        builtinWolfData("ashen", { "snowy_taiga" }), 
+        builtinWolfData("chestnut", { "old_growth_pine_taiga" }),
+        builtinWolfData("pale", { "old_growth_spruce_taiga" }),
+        builtinWolfData("rusty", { "sparse_jungle" }),
+        builtinWolfData("snowy", { "grove" }),
+        builtinWolfData("spotted", { "savanna_plateau" }),
+        builtinWolfData("striped", { "wooded_badlands" }),
+            builtinWolfData("woods", { "forest" })
+    } },
+    { "wolf_sound_variant", {
+        builtinWolfSoundData("angry", true), 
+        builtinWolfSoundData("big", true), 
+        builtinWolfSoundData("classic", false),
+        builtinWolfSoundData("cute", true), 
+        builtinWolfSoundData("grumpy", true), 
+        builtinWolfSoundData("puglin", true),
+        builtinWolfSoundData("sad", true)
+    } },
+    { "test_environment", {
+        { "minecraft:default", NBTElement::Compound({ 
+            NBTElement::String("type", "minecraft:all_of"), NBTElement::List("definitions", {}) 
+        }) }
+    } },
+    { "test_instance", {
+        { "minecrat:always_pass", NBTElement::Compound({
+            NBTElement::Byte("required", false), NBTElement::Int("max_ticks", 1), NBTElement::Int("setup_ticks", 1),
+            NBTElement::String("function", "minecraft:always_pass"), NBTElement::String("environment", "minecraft:default"),
+            NBTElement::String("structure", "minecraft:empty"), NBTElement::String("type", "minecraft:function")
+        }) }
+    } },
+    { "painting_variant", {
+        builtinPainitingData("alban", 1, 1), builtinPainitingData("aztec", 1, 1), builtinPainitingData("aztec2", 1, 1), 
+        builtinPainitingData("backyard", 3, 4), builtinPainitingData("baroque", 2, 2), builtinPainitingData("bomb", 1, 1),
+        builtinPainitingData("bouquet", 3, 3), builtinPainitingData("burning_skull", 4, 4), builtinPainitingData("bust", 2, 2),
+        builtinPainitingData("cavebird", 3, 3), builtinPainitingData("changing", 4, 2), builtinPainitingData("cotan", 3, 3),
+        builtinPainitingData("courbet", 2, 1), builtinPainitingData("creebet", 2, 1), builtinPainitingData("donkey_kong", 4, 3),
+        builtinPainitingData("earth", 2, 2, false), builtinPainitingData("endboss", 3, 3), builtinPainitingData("fern", 3, 3),
+        builtinPainitingData("fighters", 4, 2), builtinPainitingData("finding", 4, 2), builtinPainitingData("fire", 2, 2, false),
+        builtinPainitingData("graham", 1, 2), builtinPainitingData("humble", 2, 2), builtinPainitingData("kebab", 1, 1), 
+        builtinPainitingData("lowmist", 4, 2), builtinPainitingData("match", 2, 2), builtinPainitingData("meditative", 1, 1),
+        builtinPainitingData("orb", 4, 4), builtinPainitingData("owlemons", 3, 3), builtinPainitingData("passage", 4, 2),
+        builtinPainitingData("pigscene", 4, 4), builtinPainitingData("plant", 1, 1), builtinPainitingData("pointer", 4, 4),
+        builtinPainitingData("pond", 3, 4), builtinPainitingData("pool", 2, 1), builtinPainitingData("prairie_ride", 1, 2),
+        builtinPainitingData("sea", 2, 1), builtinPainitingData("skeleton", 4, 3), builtinPainitingData("skull_and_roses", 2, 2),
+        builtinPainitingData("stage", 2, 2), builtinPainitingData("sunflowers", 3, 3), builtinPainitingData("sunset", 2, 1),
+        builtinPainitingData("tides", 3, 3), builtinPainitingData("unpacked", 4, 4), builtinPainitingData("void", 2, 2),
+        builtinPainitingData("wanderer", 1, 2), builtinPainitingData("wasteland", 1, 1), builtinPainitingData("water", 2, 2, false),
+        builtinPainitingData("wind", 2, 2, false), builtinPainitingData("wither", 2, 2, false)
+    } },
+    { "cat_variant", {
+        builtinMobVariantData("cat", "all_black"), builtinMobVariantData("cat", "black"), builtinMobVariantData("cat", "british_shorthair"),
+        builtinMobVariantData("cat", "tabby"), builtinMobVariantData("cat", "ragdoll"), builtinMobVariantData("cat", "persian"),
+        builtinMobVariantData("cat", "jellie"), builtinMobVariantData("cat", "calico"), builtinMobVariantData("cat", "red"),
+        builtinMobVariantData("cat", "siamese"), builtinMobVariantData("cat", "white")
+    } },
+    { "instrument", {
+        builtinGoatHorn("admire_goat_horn", 4),
+        builtinGoatHorn("call_goat_horn", 5),
+        builtinGoatHorn("dream_goat_horn", 7),
+        builtinGoatHorn("feel_goat_horn", 3),
+        builtinGoatHorn("ponder_goat_horn", 0),
+        builtinGoatHorn("seek_goat_horn", 2),
+        builtinGoatHorn("sing_goat_horn", 1),
+        builtinGoatHorn("yearn_goat_horn", 6)
+    } },
+    { "jukebox_song", {
+        builtinJukeBoxSongHorn("11", 71.0f, 11), 
+        builtinJukeBoxSongHorn("13", 178.0f, 1),
+        builtinJukeBoxSongHorn("5", 178.0f, 15),
+        builtinJukeBoxSongHorn("blocks", 345.0f, 3),
+        builtinJukeBoxSongHorn("cat", 185.0f, 2),
+        builtinJukeBoxSongHorn("chirp", 185.0f, 4),
+        builtinJukeBoxSongHorn("creator", 176.0f, 12),
+        builtinJukeBoxSongHorn("creator_music_box", 73.0f, 11),
+        builtinJukeBoxSongHorn("far", 174.0f, 5),
+        builtinJukeBoxSongHorn("mall", 197.0f, 6),
+        builtinJukeBoxSongHorn("mellohi", 96.0f, 7),
+        builtinJukeBoxSongHorn("otherside", 195.0f, 14),
+        builtinJukeBoxSongHorn("pigstep", 149.0f, 13),
+        builtinJukeBoxSongHorn("precipice", 299.0f, 13),
+        builtinJukeBoxSongHorn("relic", 218.0f, 14),
+        builtinJukeBoxSongHorn("stal", 150.0f, 8),
+        builtinJukeBoxSongHorn("strad", 188.0f, 9),
+        builtinJukeBoxSongHorn("wait", 238.0f, 12),
+        builtinJukeBoxSongHorn("ward", 251.0f, 10)
+    } },
+    { "enchantment", {
+        builtinEnchantment("aqua_affinity", 1, 0, 41, 0, 4, { "head" }, "#minecraft:enchantable/head_armor", 2, 1, {
+            NBTElement::List("minecraft:attributes", {
+                attributeBuilder("enchantment.aqua_affinity", "submerged_mining_speed", "add_multiplied_total", 4.0f, 4.0f, "linear")
+            })
+        }),
+        builtinEnchantment("binding_curse", 25, 0, 50, 0, 8, { "armor" }, "#minecraft:enchantable/equippable", 1, 1, {
+            NBTElement::Compound("minecraft:prevent_armor_change",{})
+        }),
+        builtinEnchantment("vanishing_curse", 25, 0, 50, 0, 8, { "any" }, "#minecraft:enchantable/vanishing", 1, 1, {
+            NBTElement::Compound("minecraft:prevent_equipment_drop",{})
+        }),
+        builtinEnchantment("blast_protection", 5, 8, 13, 8, 4, { "armor" }, "#minecraft:enchantable/armor", 2, 4, {
+            NBTElement::List("minecraft:attributes", {
+                attributeBuilder("enchantment.blast_protection", "explosion_knockback_resistance", "add_value", 0.15f, 0.15f, "linear")
+            }),
+            NBTElement::List("minecraft:damage_protection", {NBTElement::Compound({
+                NBTElement::Compound("effect", {
+                    NBTElement::String("type", "minecraft:add"),
+                    NBTElement::Compound("value", {
+                        NBTElement::Float("base", 2.0f),
+                        NBTElement::Float("per_level_above_first", 2.0f),
+                        NBTElement::String("type", "minecraft:linear")
+                    })
+                }),
+                NBTElement::Compound("requirements", {
+                    NBTElement::Compound("predicate", {NBTElement::List("tags", {
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", true),
+                            NBTElement::String("id", "minecraft:is_explosion")
+                        }),
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", false),
+                            NBTElement::String("id", "minecraft:bypasses_invulnerability")
+                        })
+                    })}),
+                    NBTElement::String("condition", "minecraft:damage_source_properties")
+                })
+            })})
+        }, "#minecraft:exclusive_set/armor"),
+        builtinEnchantment("depth_strider", 10, 10, 10, 10, 4, { "feet" }, "#minecraft:enchantable/foot_armor", 2, 3, {
+            NBTElement::List("minecraft:attributes", {
+                attributeBuilder("enchantment.depth_strider", "water_movement_efficiency", "add_value", 0.33333334f, 0.33333334f, "linear")
+            })
+        }, "#minecraft:exclusive_set/boots"),
+        builtinEnchantment("feather_falling", 5, 6, 11, 6, 2, { "armor" }, "#minecraft:enchantable/foot_armor", 5, 4, {
+            NBTElement::List("minecraft:damage_protection", {NBTElement::Compound({
+                NBTElement::Compound("effect", {
+                    NBTElement::String("type", "minecraft:add"),
+                    NBTElement::Compound("value", {
+                        NBTElement::Float("base", 3.0f),
+                        NBTElement::Float("per_level_above_first", 3.0f),
+                        NBTElement::String("type", "minecraft:linear")
+                    })
+                }),
+                NBTElement::Compound("requirements", {
+                    NBTElement::Compound("predicate", {NBTElement::List("tags", {
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", true),
+                            NBTElement::String("id", "minecraft:is_fall")
+                        }),
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", false),
+                            NBTElement::String("id", "minecraft:bypasses_invulnerability")
+                        })
+                    })}),
+                    NBTElement::String("condition", "minecraft:damage_source_properties")
+                })
+            })})
+        }),
+        builtinEnchantment("protection", 1, 11, 12, 11, 1, { "armor" }, "#minecraft:enchantable/armor", 10, 4, {
+            NBTElement::List("minecraft:damage_protection", {NBTElement::Compound({
+                NBTElement::Compound("effect", {
+                    NBTElement::String("type", "minecraft:add"),
+                    NBTElement::Compound("value", {
+                        NBTElement::Float("base", 1.0f),
+                        NBTElement::Float("per_level_above_first", 1.0f),
+                        NBTElement::String("type", "minecraft:linear")
+                    })
+                }),
+                NBTElement::Compound("requirements", {
+                    NBTElement::Compound("predicate", {NBTElement::List("tags", {
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", false),
+                            NBTElement::String("id", "minecraft:bypasses_invulnerability")
+                        })
+                    })}),
+                    NBTElement::String("condition", "minecraft:damage_source_properties")
+                })
+            })})
+        }, "#minecraft:exclusive_set/armor"),
+        builtinEnchantment("fire_protection", 10, 8, 18, 8, 2, { "armor" }, "#minecraft:enchantable/armor", 5, 4, {
+            NBTElement::List("minecraft:attributes", {
+                attributeBuilder("enchantment.fire_protection", "burning_time", "add_value", -0.15f, -0.15f, "linear")
+            }),
+            NBTElement::List("minecraft:damage_protection", {NBTElement::Compound({
+                NBTElement::Compound("effect", {
+                    NBTElement::String("type", "minecraft:add"),
+                    NBTElement::Compound("value", {
+                        NBTElement::Float("base", 2.0f),
+                        NBTElement::Float("per_level_above_first", 2.0f),
+                        NBTElement::String("type", "minecraft:linear")
+                    })
+                }),
+                NBTElement::Compound("requirements", {
+                    NBTElement::Compound("predicate", {NBTElement::List("tags", {
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", true),
+                            NBTElement::String("id", "minecraft:is_fire")
+                        }),
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", false),
+                            NBTElement::String("id", "minecraft:bypasses_invulnerability")
+                        })
+                    })}),
+                    NBTElement::String("condition", "minecraft:all_of")
+                })
+            })})
+        }, "#minecraft:exclusive_set/armor"),
+        builtinEnchantment("projectile_protection", 3, 6, 9, 6, 2, { "armor" }, "#minecraft:enchantable/armor", 5, 4, {
+            NBTElement::List("minecraft:damage_protection", {NBTElement::Compound({
+                NBTElement::Compound("effect", {
+                    NBTElement::String("type", "minecraft:add"),
+                    NBTElement::Compound("value", {
+                        NBTElement::Float("base", 2.0f),
+                        NBTElement::Float("per_level_above_first", 2.0f),
+                        NBTElement::String("type", "minecraft:linear")
+                    })
+                }),
+                NBTElement::Compound("requirements", {
+                    NBTElement::Compound("predicate", {NBTElement::List("tags", {
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", true),
+                            NBTElement::String("id", "minecraft:is_projectile")
+                        }),
+                        NBTElement::Compound({
+                            NBTElement::Byte("expected", false),
+                            NBTElement::String("id", "minecraft:bypasses_invulnerability")
+                        })
+                    })}),
+                    NBTElement::String("condition", "minecraft:damage_source_properties")
+                })
+            })})
+        }, "#minecraft:exclusive_set/armor"),
+    } }
 };
-std::unordered_map<std::string, NBTElement> g_wolfSoundVariant = {
-    { "minecraft:angry", NBTElement::Compound({
-        NBTElement::String("hurt_sound", "minecraft:entity.wolf_angry.hurt"),
-        NBTElement::String("pant_sound", "minecraft:entity.wolf_angry.pant"),
-        NBTElement::String("whine_sound", "minecraft:entity.wolf_angry.whine"),
-        NBTElement::String("ambient_sound", "minecraft:entity.wolf_angry.ambient"),
-        NBTElement::String("death_sound", "minecraft:entity.wolf_angry.death"),
-        NBTElement::String("growl_sound", "minecraft:entity.wolf_angry.growl")
-    }) },
-    { "minecraft:big", NBTElement::Compound({
-        NBTElement::String("hurt_sound", "minecraft:entity.wolf_big.hurt"),
-        NBTElement::String("pant_sound", "minecraft:entity.wolf_big.pant"),
-        NBTElement::String("whine_sound", "minecraft:entity.wolf_big.whine"),
-        NBTElement::String("ambient_sound", "minecraft:entity.wolf_big.ambient"),
-        NBTElement::String("death_sound", "minecraft:entity.wolf_big.death"),
-        NBTElement::String("growl_sound", "minecraft:entity.wolf_big.growl")
-    }) },
-    { "minecraft:classic", NBTElement::Compound({
-        NBTElement::String("hurt_sound", "minecraft:entity.wolf.hurt"),
-        NBTElement::String("pant_sound", "minecraft:entity.wolf.pant"),
-        NBTElement::String("whine_sound", "minecraft:entity.wolf.whine"),
-        NBTElement::String("ambient_sound", "minecraft:entity.wolf.ambient"),
-        NBTElement::String("death_sound", "minecraft:entity.wolf.death"),
-        NBTElement::String("growl_sound", "minecraft:entity.wolf.growl")
-    }) },
-    { "minecraft:cute", NBTElement::Compound({
-        NBTElement::String("hurt_sound", "minecraft:entity.wolf_cute.hurt"),
-        NBTElement::String("pant_sound", "minecraft:entity.wolf_cute.pant"),
-        NBTElement::String("whine_sound", "minecraft:entity.wolf_cute.whine"),
-        NBTElement::String("ambient_sound", "minecraft:entity.wolf_cute.ambient"),
-        NBTElement::String("death_sound", "minecraft:entity.wolf_cute.death"),
-        NBTElement::String("growl_sound", "minecraft:entity.wolf_cute.growl")
-    }) },
-    { "minecraft:grumpy", NBTElement::Compound({
-        NBTElement::String("hurt_sound", "minecraft:entity.wolf_grumpy.hurt"),
-        NBTElement::String("pant_sound", "minecraft:entity.wolf_grumpy.pant"),
-        NBTElement::String("whine_sound", "minecraft:entity.wolf_grumpy.whine"),
-        NBTElement::String("ambient_sound", "minecraft:entity.wolf_grumpy.ambient"),
-        NBTElement::String("death_sound", "minecraft:entity.wolf_grumpy.death"),
-        NBTElement::String("growl_sound", "minecraft:entity.wolf_grumpy.growl")
-    }) },
-    { "minecraft:puglin", NBTElement::Compound({
-        NBTElement::String("hurt_sound", "minecraft:entity.wolf_puglin.hurt"),
-        NBTElement::String("pant_sound", "minecraft:entity.wolf_puglin.pant"),
-        NBTElement::String("whine_sound", "minecraft:entity.wolf_puglin.whine"),
-        NBTElement::String("ambient_sound", "minecraft:entity.wolf_puglin.ambient"),
-        NBTElement::String("death_sound", "minecraft:entity.wolf_puglin.death"),
-        NBTElement::String("growl_sound", "minecraft:entity.wolf_puglin.growl")
-    }) },
-    { "minecraft:sad", NBTElement::Compound({
-        NBTElement::String("hurt_sound", "minecraft:entity.wolf_sad.hurt"),
-        NBTElement::String("pant_sound", "minecraft:entity.wolf_sad.pant"),
-        NBTElement::String("whine_sound", "minecraft:entity.wolf_sad.whine"),
-        NBTElement::String("ambient_sound", "minecraft:entity.wolf_sad.ambient"),
-        NBTElement::String("death_sound", "minecraft:entity.wolf_sad.death"),
-        NBTElement::String("growl_sound", "minecraft:entity.wolf_sad.growl")
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_pigVariant = {
-    { "cold", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/pig/cold_pig")
-    }) },
-    { "temperate", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/pig/temperate_pig")
-    }) },
-    { "warm", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/pig/warm_pig")
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_frogVariant = {
-    { "cold", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/frog/cold_frog")
-    }) },
-    { "temperate", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/frog/temperate_frog")
-    }) },
-    { "warm", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/frog/warm_frog")
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_cowVariant = {
-    { "cold", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/cow/cold_cow")
-    }) },
-    { "temperate", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/cow/temperate_cow")
-    }) },
-    { "warm", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/cow/warm_cow")
-    }) }
-};
-std::unordered_map<std::string, NBTElement> g_chickenVariant = {
-    { "cold", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/chicken/cold_chicken")
-    }) },
-    { "temperate", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/chicken/temperate_chicken")
-    }) },
-    { "warm", NBTElement::Compound({
-        NBTElement::String("asset_id", "minecraft:entity/chicken/warm_chicken")
-    }) }
-};
+    // "bane_of_arthropods": {
+    //   "min_cost": {
+    //     "base": 5,
+    //     "per_level_above_first": 8
+    //   },
+    //   "max_cost": {
+    //     "base": 25,
+    //     "per_level_above_first": 8
+    //   },
+    //   "anvil_cost": 2,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/weapon",
+    //   "primary_items": "#minecraft:enchantable/sword",
+    //   "weight": 5,
+    //   "max_level": 5,
+    //   "exclusive_set": "#minecraft:exclusive_set/damage",
+    //   "effects": {
+    //     "minecraft:damage": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 2.5,
+    //             "per_level_above_first": 2.5,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "type": "#minecraft:sensitive_to_bane_of_arthropods"
+    //           },
+    //           "entity": "this",
+    //           "condition": "minecraft:entity_properties"
+    //         }
+    //       }
+    //     ],
+    //     "minecraft:post_attack": [
+    //       {
+    //         "enchanted": "attacker",
+    //         "affected": "victim",
+    //         "effect": {
+    //           "max_duration": {
+    //             "base": 1.5,
+    //             "per_level_above_first": 0.5,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "min_amplifier": 3.0,
+    //           "max_amplifier": 3.0,
+    //           "to_apply": "minecraft:slowness",
+    //           "min_duration": 1.5,
+    //           "type": "minecraft:apply_mob_effect"
+    //         },
+    //         "requirements": {
+    //           "terms": [
+    //             {
+    //               "predicate": {
+    //                 "type": "#minecraft:sensitive_to_bane_of_arthropods"
+    //               },
+    //               "entity": "this",
+    //               "condition": "minecraft:entity_properties"
+    //             },
+    //             {
+    //               "predicate": {
+    //                 "is_direct": true
+    //               },
+    //               "condition": "minecraft:damage_source_properties"
+    //             }
+    //           ],
+    //           "condition": "minecraft:all_of"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "breach": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.breach"
+    //   },
+    //   "min_cost": {
+    //     "base": 15,
+    //     "per_level_above_first": 9
+    //   },
+    //   "max_cost": {
+    //     "base": 65,
+    //     "per_level_above_first": 9
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/mace",
+    //   "weight": 2,
+    //   "max_level": 4,
+    //   "exclusive_set": "#minecraft:exclusive_set/damage",
+    //   "effects": {
+    //     "minecraft:armor_effectiveness": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": -0.15,
+    //             "per_level_above_first": -0.15,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "channeling": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.channeling"
+    //   },
+    //   "min_cost": {
+    //     "base": 25,
+    //     "per_level_above_first": 0
+    //   },
+    //   "max_cost": {
+    //     "base": 50,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 8,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/trident",
+    //   "weight": 1,
+    //   "max_level": 1,
+    //   "effects": {
+    //     "minecraft:hit_block": [
+    //       {
+    //         "effect": {
+    //           "effects": [
+    //             {
+    //               "entity": "minecraft:lightning_bolt",
+    //               "type": "minecraft:summon_entity"
+    //             },
+    //             {
+    //               "sound": "minecraft:item.trident.thunder",
+    //               "volume": 5.0,
+    //               "pitch": 1.0,
+    //               "type": "minecraft:play_sound"
+    //             }
+    //           ],
+    //           "type": "minecraft:all_of"
+    //         },
+    //         "requirements": {
+    //           "terms": [
+    //             {
+    //               "thundering": true,
+    //               "condition": "minecraft:weather_check"
+    //             },
+    //             {
+    //               "predicate": {
+    //                 "type": "minecraft:trident"
+    //               },
+    //               "entity": "this",
+    //               "condition": "minecraft:entity_properties"
+    //             },
+    //             {
+    //               "predicate": {
+    //                 "can_see_sky": true
+    //               },
+    //               "condition": "minecraft:location_check"
+    //             },
+    //             {
+    //               "block": "minecraft:lightning_rod",
+    //               "condition": "minecraft:block_state_property"
+    //             }
+    //           ],
+    //           "condition": "minecraft:all_of"
+    //         }
+    //       }
+    //     ],
+    //     "minecraft:post_attack": [
+    //       {
+    //         "enchanted": "attacker",
+    //         "affected": "victim",
+    //         "effect": {
+    //           "effects": [
+    //             {
+    //               "entity": "minecraft:lightning_bolt",
+    //               "type": "minecraft:summon_entity"
+    //             },
+    //             {
+    //               "sound": "minecraft:item.trident.thunder",
+    //               "volume": 5.0,
+    //               "pitch": 1.0,
+    //               "type": "minecraft:play_sound"
+    //             }
+    //           ],
+    //           "type": "minecraft:all_of"
+    //         },
+    //         "requirements": {
+    //           "terms": [
+    //             {
+    //               "thundering": true,
+    //               "condition": "minecraft:weather_check"
+    //             },
+    //             {
+    //               "predicate": {
+    //                 "location": {
+    //                   "can_see_sky": true
+    //                 }
+    //               },
+    //               "entity": "this",
+    //               "condition": "minecraft:entity_properties"
+    //             },
+    //             {
+    //               "predicate": {
+    //                 "type": "minecraft:trident"
+    //               },
+    //               "entity": "direct_attacker",
+    //               "condition": "minecraft:entity_properties"
+    //             }
+    //           ],
+    //           "condition": "minecraft:all_of"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "density": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.density"
+    //   },
+    //   "min_cost": {
+    //     "base": 5,
+    //     "per_level_above_first": 8
+    //   },
+    //   "max_cost": {
+    //     "base": 25,
+    //     "per_level_above_first": 8
+    //   },
+    //   "anvil_cost": 2,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/mace",
+    //   "weight": 5,
+    //   "max_level": 5,
+    //   "exclusive_set": "#minecraft:exclusive_set/damage",
+    //   "effects": {
+    //     "minecraft:smash_damage_per_fallen_block": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 0.5,
+    //             "per_level_above_first": 0.5,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "efficiency": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.efficiency"
+    //   },
+    //   "min_cost": {
+    //     "base": 1,
+    //     "per_level_above_first": 10
+    //   },
+    //   "max_cost": {
+    //     "base": 51,
+    //     "per_level_above_first": 10
+    //   },
+    //   "anvil_cost": 1,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/mining",
+    //   "weight": 10,
+    //   "max_level": 5,
+    //   "effects": {
+    //     "minecraft:attributes": [
+    //       {
+    //         "id": "minecraft:enchantment.efficiency",
+    //         "attribute": "minecraft:mining_efficiency",
+    //         "amount": {
+    //           "added": 1.0,
+    //           "type": "minecraft:levels_squared"
+    //         },
+    //         "operation": "add_value"
+    //       }
+    //     ]
+    //   }
+    // },
+    // "fire_aspect": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.fire_aspect"
+    //   },
+    //   "min_cost": {
+    //     "base": 10,
+    //     "per_level_above_first": 20
+    //   },
+    //   "max_cost": {
+    //     "base": 60,
+    //     "per_level_above_first": 20
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/fire_aspect",
+    //   "primary_items": "#minecraft:enchantable/sword",
+    //   "weight": 2,
+    //   "max_level": 2,
+    //   "effects": {
+    //     "minecraft:post_attack": [
+    //       {
+    //         "enchanted": "attacker",
+    //         "affected": "victim",
+    //         "effect": {
+    //           "duration": {
+    //             "base": 4.0,
+    //             "per_level_above_first": 4.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:ignite"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "is_direct": true
+    //           },
+    //           "condition": "minecraft:damage_source_properties"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "flame": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.flame"
+    //   },
+    //   "min_cost": {
+    //     "base": 20,
+    //     "per_level_above_first": 0
+    //   },
+    //   "max_cost": {
+    //     "base": 50,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/bow",
+    //   "weight": 2,
+    //   "max_level": 1,
+    //   "effects": {
+    //     "minecraft:projectile_spawned": [
+    //       {
+    //         "effect": {
+    //           "duration": 100.0,
+    //           "type": "minecraft:ignite"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "fortune": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.fortune"
+    //   },
+    //   "min_cost": {
+    //     "base": 15,
+    //     "per_level_above_first": 9
+    //   },
+    //   "max_cost": {
+    //     "base": 65,
+    //     "per_level_above_first": 9
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/mining_loot",
+    //   "weight": 2,
+    //   "max_level": 3,
+    //   "exclusive_set": "#minecraft:exclusive_set/mining"
+    // },
+    // "frost_walker": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.frost_walker"
+    //   },
+    //   "min_cost": {
+    //     "base": 10,
+    //     "per_level_above_first": 10
+    //   },
+    //   "max_cost": {
+    //     "base": 25,
+    //     "per_level_above_first": 10
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "feet"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/foot_armor",
+    //   "weight": 2,
+    //   "max_level": 2,
+    //   "exclusive_set": "#minecraft:exclusive_set/boots",
+    //   "effects": {
+    //     "minecraft:damage_immunity": [
+    //       {
+    //         "effect": {},
+    //         "requirements": {
+    //           "predicate": {
+    //             "tags": [
+    //               {
+    //                 "id": "minecraft:burn_from_stepping",
+    //                 "expected": true
+    //               },
+    //               {
+    //                 "id": "minecraft:bypasses_invulnerability",
+    //                 "expected": false
+    //               }
+    //             ]
+    //           },
+    //           "condition": "minecraft:damage_source_properties"
+    //         }
+    //       }
+    //     ],
+    //     "minecraft:location_changed": [
+    //       {
+    //         "effect": {
+    //           "predicate": {
+    //             "predicates": [
+    //               {
+    //                 "offset": [
+    //                   0,
+    //                   1,
+    //                   0
+    //                 ],
+    //                 "tag": "minecraft:air",
+    //                 "type": "minecraft:matching_block_tag"
+    //               },
+    //               {
+    //                 "blocks": "minecraft:water",
+    //                 "type": "minecraft:matching_blocks"
+    //               },
+    //               {
+    //                 "fluids": "minecraft:water",
+    //                 "type": "minecraft:matching_fluids"
+    //               },
+    //               {
+    //                 "type": "minecraft:unobstructed"
+    //               }
+    //             ],
+    //             "type": "minecraft:all_of"
+    //           },
+    //           "block_state": {
+    //             "state": {
+    //               "Properties": {
+    //                 "age": "0"
+    //               },
+    //               "Name": "minecraft:frosted_ice"
+    //             },
+    //             "type": "minecraft:simple_state_provider"
+    //           },
+    //           "trigger_game_event": "minecraft:block_place",
+    //           "radius": {
+    //             "value": {
+    //               "base": 3.0,
+    //               "per_level_above_first": 1.0,
+    //               "type": "minecraft:linear"
+    //             },
+    //             "min": 0.0,
+    //             "max": 16.0,
+    //             "type": "minecraft:clamped"
+    //           },
+    //           "height": 1.0,
+    //           "offset": [
+    //             0,
+    //             -1,
+    //             0
+    //           ],
+    //           "type": "minecraft:replace_disk"
+    //         },
+    //         "requirements": {
+    //           "terms": [
+    //             {
+    //               "predicate": {
+    //                 "flags": {
+    //                   "is_on_ground": true
+    //                 }
+    //               },
+    //               "entity": "this",
+    //               "condition": "minecraft:entity_properties"
+    //             },
+    //             {
+    //               "term": {
+    //                 "predicate": {
+    //                   "vehicle": {}
+    //                 },
+    //                 "entity": "this",
+    //                 "condition": "minecraft:entity_properties"
+    //               },
+    //               "condition": "minecraft:inverted"
+    //             }
+    //           ],
+    //           "condition": "minecraft:all_of"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "impaling": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.impaling"
+    //   },
+    //   "min_cost": {
+    //     "base": 1,
+    //     "per_level_above_first": 8
+    //   },
+    //   "max_cost": {
+    //     "base": 21,
+    //     "per_level_above_first": 8
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/trident",
+    //   "weight": 2,
+    //   "max_level": 5,
+    //   "exclusive_set": "#minecraft:exclusive_set/damage",
+    //   "effects": {
+    //     "minecraft:damage": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 2.5,
+    //             "per_level_above_first": 2.5,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "type": "#minecraft:sensitive_to_impaling"
+    //           },
+    //           "entity": "this",
+    //           "condition": "minecraft:entity_properties"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "infinity": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.infinity"
+    //   },
+    //   "min_cost": {
+    //     "base": 20,
+    //     "per_level_above_first": 0
+    //   },
+    //   "max_cost": {
+    //     "base": 50,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 8,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/bow",
+    //   "weight": 1,
+    //   "max_level": 1,
+    //   "exclusive_set": "#minecraft:exclusive_set/bow",
+    //   "effects": {
+    //     "minecraft:ammo_use": [
+    //       {
+    //         "effect": {
+    //           "value": 0.0,
+    //           "type": "minecraft:set"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "items": "minecraft:arrow"
+    //           },
+    //           "condition": "minecraft:match_tool"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "knockback": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.knockback"
+    //   },
+    //   "min_cost": {
+    //     "base": 5,
+    //     "per_level_above_first": 20
+    //   },
+    //   "max_cost": {
+    //     "base": 55,
+    //     "per_level_above_first": 20
+    //   },
+    //   "anvil_cost": 2,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/sword",
+    //   "weight": 5,
+    //   "max_level": 2,
+    //   "effects": {
+    //     "minecraft:knockback": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 1.0,
+    //             "per_level_above_first": 1.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "looting": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.looting"
+    //   },
+    //   "min_cost": {
+    //     "base": 15,
+    //     "per_level_above_first": 9
+    //   },
+    //   "max_cost": {
+    //     "base": 65,
+    //     "per_level_above_first": 9
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/sword",
+    //   "weight": 2,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:equipment_drops": [
+    //       {
+    //         "enchanted": "attacker",
+    //         "effect": {
+    //           "value": {
+    //             "base": 0.01,
+    //             "per_level_above_first": 0.01,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "type": "minecraft:player"
+    //           },
+    //           "entity": "attacker",
+    //           "condition": "minecraft:entity_properties"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "loyalty": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.loyalty"
+    //   },
+    //   "min_cost": {
+    //     "base": 12,
+    //     "per_level_above_first": 7
+    //   },
+    //   "max_cost": {
+    //     "base": 50,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 2,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/trident",
+    //   "weight": 5,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:trident_return_acceleration": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 1.0,
+    //             "per_level_above_first": 1.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "luck_of_the_sea": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.luck_of_the_sea"
+    //   },
+    //   "min_cost": {
+    //     "base": 15,
+    //     "per_level_above_first": 9
+    //   },
+    //   "max_cost": {
+    //     "base": 65,
+    //     "per_level_above_first": 9
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/fishing",
+    //   "weight": 2,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:fishing_luck_bonus": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 1.0,
+    //             "per_level_above_first": 1.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "lure": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.lure"
+    //   },
+    //   "min_cost": {
+    //     "base": 15,
+    //     "per_level_above_first": 9
+    //   },
+    //   "max_cost": {
+    //     "base": 65,
+    //     "per_level_above_first": 9
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/fishing",
+    //   "weight": 2,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:fishing_time_reduction": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 5.0,
+    //             "per_level_above_first": 5.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "mending": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.mending"
+    //   },
+    //   "min_cost": {
+    //     "base": 25,
+    //     "per_level_above_first": 25
+    //   },
+    //   "max_cost": {
+    //     "base": 75,
+    //     "per_level_above_first": 25
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "any"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/durability",
+    //   "weight": 2,
+    //   "max_level": 1,
+    //   "effects": {
+    //     "minecraft:repair_with_xp": [
+    //       {
+    //         "effect": {
+    //           "factor": 2.0,
+    //           "type": "minecraft:multiply"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "multishot": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.multishot"
+    //   },
+    //   "min_cost": {
+    //     "base": 20,
+    //     "per_level_above_first": 0
+    //   },
+    //   "max_cost": {
+    //     "base": 50,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/crossbow",
+    //   "weight": 2,
+    //   "max_level": 1,
+    //   "exclusive_set": "#minecraft:exclusive_set/crossbow",
+    //   "effects": {
+    //     "minecraft:projectile_count": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 2.0,
+    //             "per_level_above_first": 2.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ],
+    //     "minecraft:projectile_spread": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 10.0,
+    //             "per_level_above_first": 10.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "piercing": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.piercing"
+    //   },
+    //   "min_cost": {
+    //     "base": 1,
+    //     "per_level_above_first": 10
+    //   },
+    //   "max_cost": {
+    //     "base": 50,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 1,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/crossbow",
+    //   "weight": 10,
+    //   "max_level": 4,
+    //   "exclusive_set": "#minecraft:exclusive_set/crossbow",
+    //   "effects": {
+    //     "minecraft:projectile_piercing": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 1.0,
+    //             "per_level_above_first": 1.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "power": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.power"
+    //   },
+    //   "min_cost": {
+    //     "base": 1,
+    //     "per_level_above_first": 10
+    //   },
+    //   "max_cost": {
+    //     "base": 16,
+    //     "per_level_above_first": 10
+    //   },
+    //   "anvil_cost": 1,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/bow",
+    //   "weight": 10,
+    //   "max_level": 5,
+    //   "effects": {
+    //     "minecraft:damage": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 1.0,
+    //             "per_level_above_first": 0.5,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "type": "#minecraft:arrows"
+    //           },
+    //           "entity": "direct_attacker",
+    //           "condition": "minecraft:entity_properties"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "punch": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.punch"
+    //   },
+    //   "min_cost": {
+    //     "base": 12,
+    //     "per_level_above_first": 20
+    //   },
+    //   "max_cost": {
+    //     "base": 37,
+    //     "per_level_above_first": 20
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/bow",
+    //   "weight": 2,
+    //   "max_level": 2,
+    //   "effects": {
+    //     "minecraft:knockback": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 1.0,
+    //             "per_level_above_first": 1.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "type": "#minecraft:arrows"
+    //           },
+    //           "entity": "direct_attacker",
+    //           "condition": "minecraft:entity_properties"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "quick_charge": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.quick_charge"
+    //   },
+    //   "min_cost": {
+    //     "base": 12,
+    //     "per_level_above_first": 20
+    //   },
+    //   "max_cost": {
+    //     "base": 50,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 2,
+    //   "slots": [
+    //     "mainhand",
+    //     "offhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/crossbow",
+    //   "weight": 5,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:crossbow_charge_time": {
+    //       "value": {
+    //         "base": -0.25,
+    //         "per_level_above_first": -0.25,
+    //         "type": "minecraft:linear"
+    //       },
+    //       "type": "minecraft:add"
+    //     },
+    //     "minecraft:crossbow_charging_sounds": [
+    //       {
+    //         "start": "minecraft:item.crossbow.quick_charge_1",
+    //         "end": "minecraft:item.crossbow.loading_end"
+    //       },
+    //       {
+    //         "start": "minecraft:item.crossbow.quick_charge_2",
+    //         "end": "minecraft:item.crossbow.loading_end"
+    //       },
+    //       {
+    //         "start": "minecraft:item.crossbow.quick_charge_3",
+    //         "end": "minecraft:item.crossbow.loading_end"
+    //       }
+    //     ]
+    //   }
+    // },
+    // "respiration": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.respiration"
+    //   },
+    //   "min_cost": {
+    //     "base": 10,
+    //     "per_level_above_first": 10
+    //   },
+    //   "max_cost": {
+    //     "base": 40,
+    //     "per_level_above_first": 10
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "head"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/head_armor",
+    //   "weight": 2,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:attributes": [
+    //       {
+    //         "id": "minecraft:enchantment.respiration",
+    //         "attribute": "minecraft:oxygen_bonus",
+    //         "amount": {
+    //           "base": 1.0,
+    //           "per_level_above_first": 1.0,
+    //           "type": "minecraft:linear"
+    //         },
+    //         "operation": "add_value"
+    //       }
+    //     ]
+    //   }
+    // },
+    // "riptide": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.riptide"
+    //   },
+    //   "min_cost": {
+    //     "base": 17,
+    //     "per_level_above_first": 7
+    //   },
+    //   "max_cost": {
+    //     "base": 50,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "hand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/trident",
+    //   "weight": 2,
+    //   "max_level": 3,
+    //   "exclusive_set": "#minecraft:exclusive_set/riptide",
+    //   "effects": {
+    //     "minecraft:trident_sound": [
+    //       "minecraft:item.trident.riptide_1",
+    //       "minecraft:item.trident.riptide_2",
+    //       "minecraft:item.trident.riptide_3"
+    //     ],
+    //     "minecraft:trident_spin_attack_strength": {
+    //       "value": {
+    //         "base": 1.5,
+    //         "per_level_above_first": 0.75,
+    //         "type": "minecraft:linear"
+    //       },
+    //       "type": "minecraft:add"
+    //     }
+    //   }
+    // },
+    // "sharpness": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.sharpness"
+    //   },
+    //   "min_cost": {
+    //     "base": 1,
+    //     "per_level_above_first": 11
+    //   },
+    //   "max_cost": {
+    //     "base": 21,
+    //     "per_level_above_first": 11
+    //   },
+    //   "anvil_cost": 1,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/sharp_weapon",
+    //   "primary_items": "#minecraft:enchantable/sword",
+    //   "weight": 10,
+    //   "max_level": 5,
+    //   "exclusive_set": "#minecraft:exclusive_set/damage",
+    //   "effects": {
+    //     "minecraft:damage": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 1.0,
+    //             "per_level_above_first": 0.5,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "silk_touch": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.silk_touch"
+    //   },
+    //   "min_cost": {
+    //     "base": 15,
+    //     "per_level_above_first": 0
+    //   },
+    //   "max_cost": {
+    //     "base": 65,
+    //     "per_level_above_first": 0
+    //   },
+    //   "anvil_cost": 8,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/mining_loot",
+    //   "weight": 1,
+    //   "max_level": 1,
+    //   "exclusive_set": "#minecraft:exclusive_set/mining",
+    //   "effects": {
+    //     "minecraft:block_experience": [
+    //       {
+    //         "effect": {
+    //           "value": 0.0,
+    //           "type": "minecraft:set"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "smite": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.smite"
+    //   },
+    //   "min_cost": {
+    //     "base": 5,
+    //     "per_level_above_first": 8
+    //   },
+    //   "max_cost": {
+    //     "base": 25,
+    //     "per_level_above_first": 8
+    //   },
+    //   "anvil_cost": 2,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/weapon",
+    //   "primary_items": "#minecraft:enchantable/sword",
+    //   "weight": 5,
+    //   "max_level": 5,
+    //   "exclusive_set": "#minecraft:exclusive_set/damage",
+    //   "effects": {
+    //     "minecraft:damage": [
+    //       {
+    //         "effect": {
+    //           "value": {
+    //             "base": 2.5,
+    //             "per_level_above_first": 2.5,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:add"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "type": "#minecraft:sensitive_to_smite"
+    //           },
+    //           "entity": "this",
+    //           "condition": "minecraft:entity_properties"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "soul_speed": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.soul_speed"
+    //   },
+    //   "min_cost": {
+    //     "base": 10,
+    //     "per_level_above_first": 10
+    //   },
+    //   "max_cost": {
+    //     "base": 25,
+    //     "per_level_above_first": 10
+    //   },
+    //   "anvil_cost": 8,
+    //   "slots": [
+    //     "feet"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/foot_armor",
+    //   "weight": 1,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:location_changed": [
+    //       {
+    //         "effect": {
+    //           "effects": [
+    //             {
+    //               "id": "minecraft:enchantment.soul_speed",
+    //               "attribute": "minecraft:movement_speed",
+    //               "amount": {
+    //                 "base": 0.0405,
+    //                 "per_level_above_first": 0.0105,
+    //                 "type": "minecraft:linear"
+    //               },
+    //               "operation": "add_value",
+    //               "type": "minecraft:attribute"
+    //             },
+    //             {
+    //               "id": "minecraft:enchantment.soul_speed",
+    //               "attribute": "minecraft:movement_efficiency",
+    //               "amount": 1.0,
+    //               "operation": "add_value",
+    //               "type": "minecraft:attribute"
+    //             }
+    //           ],
+    //           "type": "minecraft:all_of"
+    //         },
+    //         "requirements": {
+    //           "terms": [
+    //             {
+    //               "term": {
+    //                 "predicate": {
+    //                   "vehicle": {}
+    //                 },
+    //                 "entity": "this",
+    //                 "condition": "minecraft:entity_properties"
+    //               },
+    //               "condition": "minecraft:inverted"
+    //             },
+    //             {
+    //               "terms": [
+    //                 {
+    //                   "terms": [
+    //                     {
+    //                       "active": true,
+    //                       "condition": "minecraft:enchantment_active_check"
+    //                     },
+    //                     {
+    //                       "predicate": {
+    //                         "flags": {
+    //                           "is_flying": false
+    //                         }
+    //                       },
+    //                       "entity": "this",
+    //                       "condition": "minecraft:entity_properties"
+    //                     },
+    //                     {
+    //                       "terms": [
+    //                         {
+    //                           "predicate": {
+    //                             "movement_affected_by": {
+    //                               "block": {
+    //                                 "blocks": "#minecraft:soul_speed_blocks"
+    //                               }
+    //                             }
+    //                           },
+    //                           "entity": "this",
+    //                           "condition": "minecraft:entity_properties"
+    //                         },
+    //                         {
+    //                           "predicate": {
+    //                             "flags": {
+    //                               "is_on_ground": false
+    //                             }
+    //                           },
+    //                           "entity": "this",
+    //                           "condition": "minecraft:entity_properties"
+    //                         }
+    //                       ],
+    //                       "condition": "minecraft:any_of"
+    //                     }
+    //                   ],
+    //                   "condition": "minecraft:all_of"
+    //                 },
+    //                 {
+    //                   "terms": [
+    //                     {
+    //                       "active": false,
+    //                       "condition": "minecraft:enchantment_active_check"
+    //                     },
+    //                     {
+    //                       "predicate": {
+    //                         "flags": {
+    //                           "is_flying": false
+    //                         },
+    //                         "movement_affected_by": {
+    //                           "block": {
+    //                             "blocks": "#minecraft:soul_speed_blocks"
+    //                           }
+    //                         }
+    //                       },
+    //                       "entity": "this",
+    //                       "condition": "minecraft:entity_properties"
+    //                     }
+    //                   ],
+    //                   "condition": "minecraft:all_of"
+    //                 }
+    //               ],
+    //               "condition": "minecraft:any_of"
+    //             }
+    //           ],
+    //           "condition": "minecraft:all_of"
+    //         }
+    //       },
+    //       {
+    //         "effect": {
+    //           "amount": 1.0,
+    //           "type": "minecraft:change_item_damage"
+    //         },
+    //         "requirements": {
+    //           "terms": [
+    //             {
+    //               "chance": {
+    //                 "amount": 0.04,
+    //                 "type": "minecraft:enchantment_level"
+    //               },
+    //               "condition": "minecraft:random_chance"
+    //             },
+    //             {
+    //               "predicate": {
+    //                 "flags": {
+    //                   "is_on_ground": true
+    //                 },
+    //                 "movement_affected_by": {
+    //                   "block": {
+    //                     "blocks": "#minecraft:soul_speed_blocks"
+    //                   }
+    //                 }
+    //               },
+    //               "entity": "this",
+    //               "condition": "minecraft:entity_properties"
+    //             }
+    //           ],
+    //           "condition": "minecraft:all_of"
+    //         }
+    //       }
+    //     ],
+    //     "minecraft:tick": [
+    //       {
+    //         "effect": {
+    //           "horizontal_velocity": {
+    //             "movement_scale": -0.2
+    //           },
+    //           "vertical_velocity": {
+    //             "base": 0.1
+    //           },
+    //           "speed": 1.0,
+    //           "particle": {
+    //             "type": "minecraft:soul"
+    //           },
+    //           "horizontal_position": {
+    //             "type": "in_bounding_box"
+    //           },
+    //           "vertical_position": {
+    //             "type": "entity_position",
+    //             "offset": 0.1
+    //           },
+    //           "type": "minecraft:spawn_particles"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "periodic_tick": 5,
+    //             "flags": {
+    //               "is_flying": false,
+    //               "is_on_ground": true
+    //             },
+    //             "movement": {
+    //               "horizontal_speed": {
+    //                 "min": 9.999999747378752E-6
+    //               }
+    //             },
+    //             "movement_affected_by": {
+    //               "block": {
+    //                 "blocks": "#minecraft:soul_speed_blocks"
+    //               }
+    //             }
+    //           },
+    //           "entity": "this",
+    //           "condition": "minecraft:entity_properties"
+    //         }
+    //       },
+    //       {
+    //         "effect": {
+    //           "sound": "minecraft:particle.soul_escape",
+    //           "volume": 0.6,
+    //           "pitch": {
+    //             "min_inclusive": 0.6,
+    //             "max_exclusive": 1.0,
+    //             "type": "minecraft:uniform"
+    //           },
+    //           "type": "minecraft:play_sound"
+    //         },
+    //         "requirements": {
+    //           "terms": [
+    //             {
+    //               "chance": 0.35,
+    //               "condition": "minecraft:random_chance"
+    //             },
+    //             {
+    //               "predicate": {
+    //                 "periodic_tick": 5,
+    //                 "flags": {
+    //                   "is_flying": false,
+    //                   "is_on_ground": true
+    //                 },
+    //                 "movement": {
+    //                   "horizontal_speed": {
+    //                     "min": 9.999999747378752E-6
+    //                   }
+    //                 },
+    //                 "movement_affected_by": {
+    //                   "block": {
+    //                     "blocks": "#minecraft:soul_speed_blocks"
+    //                   }
+    //                 }
+    //               },
+    //               "entity": "this",
+    //               "condition": "minecraft:entity_properties"
+    //             }
+    //           ],
+    //           "condition": "minecraft:all_of"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "sweeping_edge": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.sweeping_edge"
+    //   },
+    //   "min_cost": {
+    //     "base": 5,
+    //     "per_level_above_first": 9
+    //   },
+    //   "max_cost": {
+    //     "base": 20,
+    //     "per_level_above_first": 9
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/sword",
+    //   "weight": 2,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:attributes": [
+    //       {
+    //         "id": "minecraft:enchantment.sweeping_edge",
+    //         "attribute": "minecraft:sweeping_damage_ratio",
+    //         "amount": {
+    //           "numerator": {
+    //             "base": 1.0,
+    //             "per_level_above_first": 1.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "denominator": {
+    //             "base": 2.0,
+    //             "per_level_above_first": 1.0,
+    //             "type": "minecraft:linear"
+    //           },
+    //           "type": "minecraft:fraction"
+    //         },
+    //         "operation": "add_value"
+    //       }
+    //     ]
+    //   }
+    // },
+    // "swift_sneak": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.swift_sneak"
+    //   },
+    //   "min_cost": {
+    //     "base": 25,
+    //     "per_level_above_first": 25
+    //   },
+    //   "max_cost": {
+    //     "base": 75,
+    //     "per_level_above_first": 25
+    //   },
+    //   "anvil_cost": 8,
+    //   "slots": [
+    //     "legs"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/leg_armor",
+    //   "weight": 1,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:attributes": [
+    //       {
+    //         "id": "minecraft:enchantment.swift_sneak",
+    //         "attribute": "minecraft:sneaking_speed",
+    //         "amount": {
+    //           "base": 0.15,
+    //           "per_level_above_first": 0.15,
+    //           "type": "minecraft:linear"
+    //         },
+    //         "operation": "add_value"
+    //       }
+    //     ]
+    //   }
+    // },
+    // "thorns": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.thorns"
+    //   },
+    //   "min_cost": {
+    //     "base": 10,
+    //     "per_level_above_first": 20
+    //   },
+    //   "max_cost": {
+    //     "base": 60,
+    //     "per_level_above_first": 20
+    //   },
+    //   "anvil_cost": 8,
+    //   "slots": [
+    //     "any"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/armor",
+    //   "primary_items": "#minecraft:enchantable/chest_armor",
+    //   "weight": 1,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:post_attack": [
+    //       {
+    //         "enchanted": "victim",
+    //         "affected": "attacker",
+    //         "effect": {
+    //           "effects": [
+    //             {
+    //               "min_damage": 1.0,
+    //               "max_damage": 5.0,
+    //               "damage_type": "minecraft:thorns",
+    //               "type": "minecraft:damage_entity"
+    //             },
+    //             {
+    //               "amount": 2.0,
+    //               "type": "minecraft:change_item_damage"
+    //             }
+    //           ],
+    //           "type": "minecraft:all_of"
+    //         },
+    //         "requirements": {
+    //           "chance": {
+    //             "amount": {
+    //               "base": 0.15,
+    //               "per_level_above_first": 0.15,
+    //               "type": "minecraft:linear"
+    //             },
+    //             "type": "minecraft:enchantment_level"
+    //           },
+    //           "condition": "minecraft:random_chance"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "unbreaking": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.unbreaking"
+    //   },
+    //   "min_cost": {
+    //     "base": 5,
+    //     "per_level_above_first": 8
+    //   },
+    //   "max_cost": {
+    //     "base": 55,
+    //     "per_level_above_first": 8
+    //   },
+    //   "anvil_cost": 2,
+    //   "slots": [
+    //     "any"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/durability",
+    //   "weight": 5,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:item_damage": [
+    //       {
+    //         "effect": {
+    //           "chance": {
+    //             "numerator": {
+    //               "base": 2.0,
+    //               "per_level_above_first": 2.0,
+    //               "type": "minecraft:linear"
+    //             },
+    //             "denominator": {
+    //               "base": 10.0,
+    //               "per_level_above_first": 5.0,
+    //               "type": "minecraft:linear"
+    //             },
+    //             "type": "minecraft:fraction"
+    //           },
+    //           "type": "minecraft:remove_binomial"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "items": "#minecraft:enchantable/armor"
+    //           },
+    //           "condition": "minecraft:match_tool"
+    //         }
+    //       },
+    //       {
+    //         "effect": {
+    //           "chance": {
+    //             "numerator": {
+    //               "base": 1.0,
+    //               "per_level_above_first": 1.0,
+    //               "type": "minecraft:linear"
+    //             },
+    //             "denominator": {
+    //               "base": 2.0,
+    //               "per_level_above_first": 1.0,
+    //               "type": "minecraft:linear"
+    //             },
+    //             "type": "minecraft:fraction"
+    //           },
+    //           "type": "minecraft:remove_binomial"
+    //         },
+    //         "requirements": {
+    //           "term": {
+    //             "predicate": {
+    //               "items": "#minecraft:enchantable/armor"
+    //             },
+    //             "condition": "minecraft:match_tool"
+    //           },
+    //           "condition": "minecraft:inverted"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // },
+    // "wind_burst": {
+    //   "description": {
+    //     "translate": "enchantment.minecraft.wind_burst"
+    //   },
+    //   "min_cost": {
+    //     "base": 15,
+    //     "per_level_above_first": 9
+    //   },
+    //   "max_cost": {
+    //     "base": 65,
+    //     "per_level_above_first": 9
+    //   },
+    //   "anvil_cost": 4,
+    //   "slots": [
+    //     "mainhand"
+    //   ],
+    //   "supported_items": "#minecraft:enchantable/mace",
+    //   "weight": 2,
+    //   "max_level": 3,
+    //   "effects": {
+    //     "minecraft:post_attack": [
+    //       {
+    //         "enchanted": "attacker",
+    //         "affected": "attacker",
+    //         "effect": {
+    //           "small_particle": {
+    //             "type": "minecraft:gust_emitter_small"
+    //           },
+    //           "large_particle": {
+    //             "type": "minecraft:gust_emitter_large"
+    //           },
+    //           "sound": "minecraft:entity.wind_charge.wind_burst",
+    //           "radius": 3.5,
+    //           "block_interaction": "trigger",
+    //           "knockback_multiplier": {
+    //             "values": [
+    //               1.2,
+    //               1.75,
+    //               2.2
+    //             ],
+    //             "fallback": {
+    //               "base": 1.5,
+    //               "per_level_above_first": 0.35,
+    //               "type": "minecraft:linear"
+    //             },
+    //             "type": "minecraft:lookup"
+    //           },
+    //           "immune_blocks": "#minecraft:blocks_wind_charge_explosions",
+    //           "type": "minecraft:explode"
+    //         },
+    //         "requirements": {
+    //           "predicate": {
+    //             "flags": {
+    //               "is_flying": false
+    //             },
+    //             "movement": {
+    //               "fall_distance": {
+    //                 "min": 1.5
+    //               }
+    //             }
+    //           },
+    //           "entity": "direct_attacker",
+    //           "condition": "minecraft:entity_properties"
+    //         }
+    //       }
+    //     ]
+    //   }
+    // }
 
 Registry<char> g_fireworkExplosionShapesRegistry = Registry<char>({
     { "minecraft:small", 0 }, { "minecraft:large", 1 }, { "minecraft:star", 2 }, { "minecraft:creeper", 3 }, { "minecraft:burst", 4 }

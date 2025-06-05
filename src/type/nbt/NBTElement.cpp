@@ -1,3 +1,4 @@
+#include "type/nbt/NBTElementType.h"
 #include <type/nbt/NBTElement.h>
 #include <type/ByteBuffer.h>
 #include <util/Logger.h>
@@ -287,6 +288,43 @@ void NBTElement::decode(ByteBuffer& byteBuffer) {
     }
     default: break;
     }
+}
+bool NBTElement::contains(const std::string& tag) const {
+    if (m_type != NBTElementType::Compound) return false;
+    for (const NBTElement& element : m_childElements) if (element.m_tag == tag) return true;
+    return false;
+}
+bool NBTElement::contains(size_t pos) const {
+    if (pos > m_childElements.size() || m_type != NBTElementType::List) return false;
+    return true;
+}
+NBTElement& NBTElement::at(const std::string& tag) {
+    if (m_type != NBTElementType::Compound) return *this;
+    for (NBTElement& element : m_childElements) if (element.m_tag == tag) return element;
+    return *this;
+}
+const NBTElement& NBTElement::at(const std::string& tag) const {
+    if (m_type != NBTElementType::Compound) return *this;
+    for (const NBTElement& element : m_childElements) if (element.m_tag == tag) return element;
+    return *this;
+}
+NBTElement& NBTElement::at(size_t pos) {
+    return (contains(pos) ? m_childElements[pos] : *this);
+}
+const NBTElement& NBTElement::at(size_t pos) const {
+    return (contains(pos) ? m_childElements[pos] : *this);
+}
+NBTElement& NBTElement::operator[](const std::string& tag) {
+    return at(tag);
+}
+const NBTElement& NBTElement::operator[](const std::string& tag) const {
+    return at(tag);
+}
+NBTElement& NBTElement::operator[](size_t pos) {
+    return at(pos);
+}
+const NBTElement& NBTElement::operator[](size_t pos) const {
+    return at(pos);
 }
 bool NBTElement::operator==(const NBTElement& element) const {
     if (element.m_type != m_type) return false;

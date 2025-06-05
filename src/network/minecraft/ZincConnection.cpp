@@ -1,8 +1,12 @@
+#include "network/minecraft/ZincPacket.h"
 #include "type/TextComponent.h"
 #include "type/nbt/NBTElement.h"
+#include "util/Logger.h"
 #include "util/Memory.h"
+#include <exception>
 #include <network/minecraft/ZincConnection.h>
 #include <network/minecraft/ZincServer.h>
+#include <string>
 #include <util/TCPUtil.h>
 #include <util/ZLibUtil.h>
 #include <ZincConfig.h>
@@ -81,12 +85,14 @@ ZincPacket ZincConnection::read() {
     }
     tmpBuffer.clear();
     size_t length = zinc_safe_cast<int, size_t>(buffer.readVarNumeric<int>());
+    Logger("1").info(std::to_string(length) + " " + std::to_string(buffer.size()));
     int packetId = -1;
     ByteBuffer dataBuffer;
     if (length > buffer.size()) {
         return ZincPacket(-1); // wait for more data
     } else TCPUtil::drain(m_tcpConnection.getBuffer(), 
         buffer.getVarNumericLength<int>(zinc_safe_cast<size_t, int>(length)) + length);
+    m_shouldContinue = false;
     if (m_isCompressed) {
         size_t dataLength = zinc_safe_cast<int, size_t>(buffer.readVarNumeric<int>());
         if (dataLength) {

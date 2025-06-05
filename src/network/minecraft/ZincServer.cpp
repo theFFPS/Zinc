@@ -110,6 +110,7 @@ void ZincServer::onRead(bufferevent* bev, void* _arg1) {
             if (connection->getState() != ZincConnection::State::Status &&
                 connection->getState() != ZincConnection::State::Login &&
                 connection->getState() != ZincConnection::State::Transfer) connection->setState(ZincConnection::State::Status);
+            connection->m_shouldContinue = true;
         }
         break;
     }
@@ -188,7 +189,7 @@ void ZincServer::onRead(bufferevent* bev, void* _arg1) {
                     std::string url = "https://sessionserver.mojang.com/session/minecraft/hasJoined?username=" + 
                                     connection->m_info.m_playerInfo.m_playerName + "&serverId=" + sha.digestJava();
                     bool gotData = false;
-                    for (int i = 0; i < 5; i++) {
+                    for (int i = 0; i < 10; i++) {
                         try {
                             std::stringstream ss;
                             ss << curlpp::options::Url(url);
@@ -318,34 +319,14 @@ void ZincServer::onRead(bufferevent* bev, void* _arg1) {
             if (g_zincServerInitPluginChannels.contains(ZincConnection::State::Config)) 
                 for (const auto& pluginMessage : g_zincServerInitPluginChannels[ZincConnection::State::Config]) 
                     connection->sendPluginMessage(Identifier(pluginMessage.first), pluginMessage.second(connection));
-            // send registry data (some of it is hardcoded)
             replyPacket.setId(7);
-            replyPacket.setData(getNetworkRegistry(g_trimMaterial, Identifier("minecraft:trim_material")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_trimPattern, Identifier("minecraft:trim_pattern")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_bannerPattern, Identifier("minecraft:banner_pattern")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_chatType, Identifier("minecraft:chat_type")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_biome, Identifier("minecraft:worldgen/biome")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_damageType, Identifier("minecraft:damage_type")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_dimensionType, Identifier("minecraft:dimension_type")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_wolfVariant, Identifier("minecraft:wolf_variant")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_wolfSoundVariant, Identifier("minecraft:wolf_sound_variant")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_cowVariant, Identifier("minecraft:cow_variant")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_pigVariant, Identifier("minecraft:pig_variant")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_frogVariant, Identifier("minecraft:frog_variant")));
-            connection->send(replyPacket);
-            replyPacket.setData(getNetworkRegistry(g_chickenVariant, Identifier("minecraft:chicken_variant")));
-            connection->send(replyPacket);
+            for (const auto& registry : g_registries) {
+                replyPacket.getData().clear();
+                replyPacket.setData(getNetworkRegistry(registry.second, Identifier("minecraft:" + registry.first)));
+                m_zincLogger.debug("Sending minecraft:" + registry.first + " (" + std::to_string(replyPacket.getData().size()) + ")");
+                connection->send(replyPacket);
+            }
+            connection->sendDisconnect(TextComponentBuilder().text("Currently WIP").build());
             break;
         }
         /* COOKIE RESPONSE */ case 1: {
@@ -372,7 +353,6 @@ void ZincServer::onRead(bufferevent* bev, void* _arg1) {
             if (connection->m_info.m_networkInfo.m_lastKeepAlive != keepAlive) connection->sendLoginError("Server received invalid keep alive packet");
             else {
                 connection->m_info.m_networkInfo.m_lastKeepAlive = -1;
-                connection->sendDisconnect(TextComponentBuilder().text("Currently WIP").build());
             }
             break;
         }
@@ -387,7 +367,8 @@ void ZincServer::onRead(bufferevent* bev, void* _arg1) {
     }
     default: break;
     }
-    if (connection->getTCPConnection().read().size()) onRead(bev, _arg1);
+    if (connection->getTCPConnection().read().size() && connection->m_shouldContinue) onRead(bev, _arg1);
+    connection->m_shouldContinue = true;
 }
 void ZincServer::onEvent(bufferevent *bev, short events, void*) {
     int fd = bufferevent_getfd(bev);

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <map>
 #include <vector>
 #include <string>
 #include <external/JSON.h>
@@ -51,6 +50,18 @@ struct NBTElement {
     void decode(ByteBuffer& byteBuffer);
 
     std::string toJSON() const;
+
+    bool contains(const std::string& tag) const;
+    bool contains(size_t pos) const;
+    NBTElement& at(const std::string& tag);
+    const NBTElement& at(const std::string& tag) const;
+    NBTElement& at(size_t pos);
+    const NBTElement& at(size_t pos) const;
+
+    NBTElement& operator[](const std::string& tag);
+    const NBTElement& operator[](const std::string& tag) const;
+    NBTElement& operator[](size_t pos);
+    const NBTElement& operator[](size_t pos) const;
 
     bool operator==(const NBTElement& element) const;
     bool operator!=(const NBTElement& element) const;
