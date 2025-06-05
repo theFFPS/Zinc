@@ -85,7 +85,6 @@ ZincPacket ZincConnection::read() {
     }
     tmpBuffer.clear();
     size_t length = zinc_safe_cast<int, size_t>(buffer.readVarNumeric<int>());
-    Logger("1").info(std::to_string(length) + " " + std::to_string(buffer.size()));
     int packetId = -1;
     ByteBuffer dataBuffer;
     if (length > buffer.size()) {
